@@ -7,7 +7,7 @@ You can find more about this project in this [Notion](https://www.notion.so/pl-s
 ## How to run:
 
 We provide sample data in ``scripts/data/sample`` folder.
-This data is a 80M cut from IPFS gateways from April of 2022.
+This data is a 80M cut from IPFS gateways from April 2022.
 In this folder the data is already processed, but you can run yourself as well.
 
 ```
