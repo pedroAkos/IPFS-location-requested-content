@@ -9,13 +9,19 @@ out_file = sys.argv[2]
 cid_providers = []
 with open(log_file, 'r') as f:
     for line in f:
-        _, cid, provs, _ = providers.parse_entry(line)
-        for p in provs:
-            cid_providers.append({'cid': cid, 'ip': p})
+        if 'Found' in line:
+            _, cid, provs, _ = providers.parse_entry(line)
+            for p in provs:
+                cid_providers.append({'cid': cid, 'ip': p})
 
-
-df = pd.DataFrame(providers)
+print("Processed file", log_file)
+df = pd.DataFrame(cid_providers).dropna()
+print("Created Dataframe")
 locs = df.apply(lambda r: pd.Series(location.lookup_ip(r['ip']), index=['continent', 'country', 'regions']), axis=1)
+print("Got locations")
 df = df.join(locs)
+print("Joined data")
+df = df.dropna()
 
 df.to_csv(out_file)
+print("Outputted to file", out_file)

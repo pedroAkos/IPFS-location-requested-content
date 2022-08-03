@@ -29,7 +29,7 @@ def extract_ips_from_maddr(peer: (str, str)) -> str:
 def parse_providers(peers: str) -> list[(str, str)]:
     providers = []
     # find all matches of the regex
-    for match in re.finditer('{(.*?): [(.*?)]}', peers):
+    for match in re.finditer('{(.*?): \[(.*?)\]}', peers):
         maddrs = []
         if match is None:  # if no match continue
             continue
@@ -37,8 +37,7 @@ def parse_providers(peers: str) -> list[(str, str)]:
         addrs = match.group(2)
         if id and addrs:  # if exists both then process addrs
             for addr in addrs.split(" "):
-                maddrs.append(addr)
-    providers.append((id, maddrs))
+                providers.append((id, addr))
 
     return providers
 

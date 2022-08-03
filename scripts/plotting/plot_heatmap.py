@@ -19,15 +19,19 @@ def genMatrix(df: pd.DataFrame, groupX: list[str], groupY: list[str], provsCount
     provsMap = {}
 
     i = 0
+    j = len(all)-1
     for a in all:
         if a in provs.keys():
-            provsMap[a] = i
+            provsMap[a] = j
         if a in reqs.keys():
             reqsMap[a] = i
         i += 1
+        j -= 1
 
-    index = ['{}{}'.format(g[0], g[1]) for g in all]
-    columns = ['{}{}'.format(g[0], g[1]) for g in all]
+    index, columns = all, all
+    if len(groupX) == 2:
+        index = ['{}_{}'.format(g[0], g[1]) for g in all]
+        columns = ['{}_{}'.format(g[0], g[1]) for g in all]
 
     mat = np.zeros((len(index), len(columns)))
     i = 0
@@ -63,10 +67,10 @@ def genMatrix(df: pd.DataFrame, groupX: list[str], groupY: list[str], provsCount
         elif nodes is not None:
             count = (count / nodes.loc[r_l]['id']) / (nodes.loc[p_l]['id'])
 
-        mat[i][j] = count
+        mat[j][i] = count
 
     heat = pd.DataFrame(mat)
-    heat.index = index
+    heat.index = sorted(index, reverse=True)
     heat.columns = columns
     return heat
 
@@ -85,17 +89,25 @@ def plot_heatmap(df: pd.DataFrame, out: str = None, groupX: list[str] = None, gr
 
 
 def plot_by_continent(df: pd.DataFrame, out=None):
+    df = df.groupby(['continent_request', 'continent_provider']).count()
+    df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request'], ['continent_provider'])
 
 
 def plot_by_continent_by_requests(df: pd.DataFrame, out=None):
+    df = df.groupby(['continent_request', 'continent_provider']).count()
+    df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request'], ['continent_provider'], requests=df.groupby('continent_request').sum())
 
 
 def plot_by_country(df: pd.DataFrame, out=None):
+    df = df.groupby(['continent_request', 'country_request', 'continent_provider', 'country_provider']).count()
+    df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request', 'country_request'], ['continent_provider', 'country_provider'])
 
 
 def plot_by_country_by_requests(df: pd.DataFrame, out=None):
+    df = df.groupby(['continent_request', 'country_request', 'continent_provider', 'country_provider']).count()
+    df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request', 'country_request'], ['continent_provider', 'country_provider'],
                  requests=df.groupby(['continent_request', 'country_request']).sum())

@@ -26,7 +26,7 @@ def extract_cid(http_host: str, target: str) -> str:
     cid.extend(re.findall('baf\w+', link))
     if len(cid) == 1:
         return cid[0]
-    elif len(cid) < 0:
+    elif len(cid) == 0:
         return pd.NA
     else:
         ## which cid should we return ? all ?
@@ -50,9 +50,9 @@ def parse_log_entry(logEntry: str) -> dict[str, str]:
     ip = tokens[i]
     i += 3
     time = tokens[i]
-    i += 1
+    i += 2 # need to jump over 2 spaces
     status = tokens[i]
-    i += 2  # need to jump over 2 spaces
+    i += 1
     body_bytes = tokens[i]
     i += 1
     request_length = tokens[i]
