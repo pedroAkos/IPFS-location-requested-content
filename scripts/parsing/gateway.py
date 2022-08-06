@@ -1,4 +1,7 @@
 import re
+from datetime import datetime
+
+import dateutil.parser
 import pandas as pd
 
 
@@ -34,6 +37,11 @@ def extract_cid(http_host: str, target: str) -> str:
         return cid[0]
 
 
+def extract_date(time: str) -> datetime:
+    time = time.strip('][')
+    return dateutil.parser.parse(time)
+
+
 def parse_log_entry(logEntry: str) -> dict[str, str]:
     matches = re.findall('\"(.*?)\"', logEntry)  # finds all matches
     request = matches[0]
@@ -50,7 +58,7 @@ def parse_log_entry(logEntry: str) -> dict[str, str]:
     ip = tokens[i]
     i += 3
     time = tokens[i]
-    i += 2 # need to jump over 2 spaces
+    i += 2  # need to jump over 2 spaces
     status = tokens[i]
     i += 1
     body_bytes = tokens[i]
