@@ -17,7 +17,7 @@ with open(log_file, 'r') as f:
 print("Processed file", log_file)
 df = pd.DataFrame(cid_providers).dropna()
 print("Created Dataframe")
-locs = df.apply(lambda r: pd.Series(location.lookup_ip(r['ip']), index=['continent', 'country', 'regions']), axis=1)
+locs = df.apply(lambda r: pd.Series(location.lookup_ip(r['ip']), index=['continent', 'country', 'regions', 'lat', 'long']), axis=1)
 print("Got locations")
 df = df.join(locs)
 print("Joined data")

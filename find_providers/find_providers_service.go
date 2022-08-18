@@ -47,7 +47,8 @@ func main() {
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/findProviders/{cid}", findProviders)
 
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), router))
+	log.Println("Running on port ", *port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), router))
 }
 
 func findProviders(w http.ResponseWriter, r *http.Request) {
@@ -57,8 +58,9 @@ func findProviders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 
 	} else {
+		log.Println("Finding providers of cid", cidStr)
 		start := time.Now()
-		p, e := kad.FindProviders(nil, cid)
+		p, e := kad.FindProviders(context.Background(), cid)
 		dur := time.Now().Sub(start)
 		if e != nil {
 			http.Error(w, e.Error(), 400)
@@ -81,7 +83,9 @@ func findProviders(w http.ResponseWriter, r *http.Request) {
 				ans.Providers[i] = pstr
 			}
 
+			w.WriteHeader(200)
 			_ = json.NewEncoder(w).Encode(ans)
+			log.Println("Resolved providers of cid", cidStr, "duration:", ans.Dur)
 		}
 	}
 }
