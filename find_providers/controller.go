@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	_ "github.com/lib/pq"
+	"io"
+	"strconv"
 
 	"bytes"
 	"context"
@@ -25,7 +27,7 @@ const (
 	host     = "localhost"
 	port     = 5432
 	user     = "postgres"
-	password = "my-password"
+	password = ""
 	dbname   = "ipfs_content_location"
 )
 
@@ -49,9 +51,23 @@ const db_to_use = "postgres"
 var writeAPI api.WriteAPIBlocking
 var db *sql.DB
 
+type providerEntry struct {
+	t    time.Time
+	n    time.Time
+	ans  data.JsonAnswer
+	prov data.Provider
+	locs data.Location
+}
+
+type dbWritable struct {
+	toWrite string
+	e       data.EntryStruct
+	p       providerEntry
+}
+
 func main() {
 	var err error
-	concurrency := 5
+	concurrency := 100
 
 	prepareDB()
 	consumer := prepareKafka()
@@ -70,33 +86,18 @@ func main() {
 
 	go consumeLog(consumer, logCh)
 
+	requests := 0
 	for {
-		select {
-		case reqsCh <- struct{}{}:
-		case providers := <-provsCh:
-			if providers.err != nil {
-				log.Println("Error on fetching providers:", providers.err)
-			} else {
-				go func(url string, timeOfReq time.Time, timeNow time.Time, ans data.JsonAnswer) {
-					ans.Providers, err = parseProviders(url, ans.Providers)
-					if err != nil {
-						log.Println("Error on parsing providers:", err)
-					} else {
-						writeProvidersToDB(providers.timeOfReq, providers.timeNow, providers.ans)
-					}
-				}(parserUrl, providers.timeOfReq, providers.timeNow, providers.ans)
-			}
-		}
+		log.Println("-------------------- Requests:", requests)
 		select {
 		case entry := <-logCh:
+			reqsCh <- struct{}{}
 			e, err := parseEntry(parserUrl, entry)
 			if err != nil {
 				log.Println("Error on parsing log entry:", entry, err)
-				select {
-				case <-reqsCh:
-				default:
-				}
+				<-reqsCh
 			} else {
+				requests++
 				go writeEntryToDB(e)
 				go func(url string, cid string, t time.Time) {
 					ans := struct {
@@ -108,15 +109,16 @@ func main() {
 					a, e := findProvider(url, cid)
 					ans.ans = a
 					ans.err = e
-					provsCh <- ans
 					<-reqsCh
+					provsCh <- ans
 				}(providersUrl, e.Cid, e.Time)
 			}
 		case providers := <-provsCh:
+			requests--
 			if providers.err != nil {
 				log.Println("Error on fetching providers:", providers.err)
 			} else {
-				func(url string, timeOfReq time.Time, timeNow time.Time, ans data.JsonAnswer) {
+				go func(url string, timeOfReq time.Time, timeNow time.Time, ans data.JsonAnswer) {
 					ans.Providers, err = parseProviders(url, ans.Providers)
 					if err != nil {
 						log.Println("Error on parsing providers:", err)
@@ -155,18 +157,18 @@ func prepareDB() {
 	switch db_to_use {
 	case "postgres":
 		psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-			"password=%s dbname=%s sslmode=disable",
-			host, port, user, password, dbname)
+			"dbname=%s sslmode=disable",
+			host, port, user, dbname)
 
 		db, err = sql.Open("postgres", psqlInfo)
 		if err != nil {
 			panic(err)
 		}
-		defer db.Close()
 		err = db.Ping()
 		if err != nil {
 			panic(err)
 		}
+
 	case "influx":
 		client := influxdb2.NewClient(dbUrl, token)
 		writeAPI = client.WriteAPIBlocking(org, bucket)
@@ -183,16 +185,41 @@ func writeEntryToDB(e data.EntryStruct) {
 	}
 }
 
+func checkIfValidString(s string) sql.NullString {
+	if len(s) == 0 {
+		return sql.NullString{}
+	} else {
+		return sql.NullString{
+			String: s,
+			Valid:  true,
+		}
+	}
+}
+
+func checkIfValidFloat(s string) sql.NullFloat64 {
+	if len(s) == 0 {
+		return sql.NullFloat64{}
+	} else {
+		f, err := strconv.ParseFloat(s, 64)
+		if err != nil {
+			return sql.NullFloat64{}
+		}
+		return sql.NullFloat64{
+			Float64: f,
+			Valid:   true,
+		}
+	}
+}
+
 func writeEntryToPostgres(e data.EntryStruct) {
-	sqlStatement := `
-			INSERT INTO requests 
+	sqlStatement := `INSERT INTO public.requests 
 			(timestamp, cid, continent, country, lat, long,
 			request_time, upstream_time,
 			body_bytes, user_agent, cache)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 			`
-	err := db.QueryRow(sqlStatement, e.Time, e.Continent, e.Country, e.Lat, e.Long,
-		e.RequestTime, e.UpstreamResponseTime, e.BodyBytes, e.HttpUserAgent, e.Cache)
+	_, err := db.Exec(sqlStatement, e.Time, e.Cid, checkIfValidString(e.Continent), checkIfValidString(e.Country), checkIfValidFloat(e.Lat), checkIfValidFloat(e.Long),
+		checkIfValidFloat(e.RequestTime), checkIfValidFloat(e.UpstreamResponseTime[0]), checkIfValidFloat(e.BodyBytes), checkIfValidString(e.HttpUserAgent), checkIfValidString(e.Cache))
 	if err != nil {
 		panic(err)
 	}
@@ -230,13 +257,13 @@ func writeProvidersToDB(t time.Time, n time.Time, ans data.JsonAnswer) {
 
 func writeProviderToPostgres(t time.Time, n time.Time, ans data.JsonAnswer, prov data.Provider, locs data.Location) {
 	sqlStatement := `
-			INSERT INTO providers
+			INSERT INTO public.providers
 			(timestamp, cid, continent, country, lat, long,
 			request_time, peerID, request_at)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			`
-	err := db.QueryRow(sqlStatement, t, locs.Continent, locs.Country, locs.Lat, locs.Long,
-		ans.Dur, prov.PeerId, n)
+	_, err := db.Exec(sqlStatement, t, ans.Cid, checkIfValidString(locs.Continent), checkIfValidString(locs.Country), checkIfValidFloat(locs.Lat), checkIfValidFloat(locs.Long),
+		ans.Dur, checkIfValidString(prov.PeerId), n)
 	if err != nil {
 		panic(err)
 	}
@@ -273,11 +300,26 @@ func consumeLog(consumer *kafka.Consumer, logCh chan string) {
 	}
 }
 
-func parseEntry(url string, entry string) (data.EntryStruct, error) {
-	resp, err := http.Post(fmt.Sprintf("%v/parse", url), "text/plain; charset=utf-8", bytes.NewBuffer([]byte(entry)))
+func sendRequest(method string, url string, contentType string, body io.Reader) *http.Response {
+	client := &http.Client{}
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		panic(err)
 	}
+	req.Close = true
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	return resp
+}
+
+func parseEntry(url string, entry string) (data.EntryStruct, error) {
+	resp := sendRequest("POST", fmt.Sprintf("%v/parse", url), "text/plain; charset=utf-8", bytes.NewBuffer([]byte(entry)))
 	defer resp.Body.Close()
 
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
@@ -286,7 +328,7 @@ func parseEntry(url string, entry string) (data.EntryStruct, error) {
 	if resp.Status != "200 OK" {
 		return e, errors.New(resp.Status)
 	}
-	err = json.Unmarshal(bodyBytes, &e)
+	err := json.Unmarshal(bodyBytes, &e)
 	if err != nil {
 		panic(err)
 	}
@@ -295,10 +337,8 @@ func parseEntry(url string, entry string) (data.EntryStruct, error) {
 }
 
 func findProvider(url string, cid string) (data.JsonAnswer, error) {
-	resp, err := http.Get(fmt.Sprintf("%v/findProviders/%v", url, cid))
-	if err != nil {
-		panic(err)
-	}
+	resp := sendRequest("GET", fmt.Sprintf("%v/findProviders/%v", url, cid), "", nil)
+
 	defer resp.Body.Close()
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 
@@ -306,7 +346,7 @@ func findProvider(url string, cid string) (data.JsonAnswer, error) {
 	if resp.Status != "200 OK" {
 		return ans, errors.New(resp.Status)
 	}
-	err = json.Unmarshal(bodyBytes, &ans)
+	err := json.Unmarshal(bodyBytes, &ans)
 	if err != nil {
 		panic(err)
 	}
@@ -315,20 +355,17 @@ func findProvider(url string, cid string) (data.JsonAnswer, error) {
 }
 
 func parseProviders(url string, providers []data.Provider) ([]data.Provider, error) {
-
 	providersJson, _ := json.Marshal(providers)
 
-	resp, err := http.Post(fmt.Sprintf("%v/locate_providers", url), "application/json; charset=utf-8", bytes.NewBuffer(providersJson))
-	if err != nil {
-		panic(err)
-	}
+	resp := sendRequest("POST", fmt.Sprintf("%v/locate_providers", url), "application/json; charset=utf-8", bytes.NewBuffer(providersJson))
+
 	defer resp.Body.Close()
 	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 	if resp.Status != "200 OK" {
 		return providers, errors.New(resp.Status)
 	}
 
-	err = json.Unmarshal(bodyBytes, &providers)
+	err := json.Unmarshal(bodyBytes, &providers)
 	if err != nil {
 		panic(err)
 	}

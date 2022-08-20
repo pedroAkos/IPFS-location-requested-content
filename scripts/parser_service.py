@@ -14,7 +14,7 @@ def parse():
     try:
         entry = gateway.parse_log_entry(logEntry)
         if entry['op'] == 'GET' and \
-                200 <= int(entry['status']) < 300 and \
+                200 <= int(entry['status']) < 400 and \
                 entry['ip'] != '127.0.0.1' and \
                 entry['ip'] != '::1':
             cid = gateway.extract_cid(entry['http_host'], entry['target'])

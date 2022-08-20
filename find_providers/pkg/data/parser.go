@@ -8,8 +8,8 @@ type EntryStruct struct {
 	Cid                  string    `json:"cid"`
 	Continent            string    `json:"continent"`
 	Country              string    `json:"country"`
-	Lat                  float64   `json:"lat"`
-	Long                 float64   `json:"long"`
+	Lat                  string    `json:"lat"`
+	Long                 string    `json:"long"`
 	Http                 string    `json:"http"`
 	HttpHost             string    `json:"http_host"`
 	HttpRefer            string    `json:"http_refer"`

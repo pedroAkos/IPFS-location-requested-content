@@ -1,4 +1,4 @@
-CREATE DATABASE ipfs_content_location;
+---CREATE DATABASE ipfs_content_location;
 
 Create TABLE requests (
                           timestamp TIMESTAMP not null,
@@ -11,7 +11,7 @@ Create TABLE requests (
                           upstream_time float,
                           body_bytes int,
                           user_agent text,
-                          cache varchar(10)
+                          cache text
 );
 
 

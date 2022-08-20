@@ -7,7 +7,7 @@ def lookup_ip(ip):
     print(ip, match)
 
     continent, country, regions = pd.NA, pd.NA, pd.NA
-    location = ('', '')
+    location = None
 
     if match is not None:
         continent = match.continent  # return the continent
@@ -15,4 +15,7 @@ def lookup_ip(ip):
         regions = match.subdivisions  # this will return a list of the regions
         location = match.location #a tuple of (lat, long)
 
-    return continent, country, regions, location[0], location[1]
+    if location is None:
+        location = ('', '')
+
+    return continent, country, regions, str(location[0]), str(location[1])

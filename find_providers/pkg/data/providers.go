@@ -3,10 +3,10 @@ package data
 import "time"
 
 type Location struct {
-	Continent string  `json:"continent"`
-	Country   string  `json:"country"`
-	Lat       float64 `json:"lat"`
-	Long      float64 `json:"long"`
+	Continent string `json:"continent"`
+	Country   string `json:"country"`
+	Lat       string `json:"lat"`
+	Long      string `json:"long"`
 }
 
 type Provider struct {
