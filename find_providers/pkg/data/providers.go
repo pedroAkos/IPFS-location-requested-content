@@ -3,10 +3,13 @@ package data
 import "time"
 
 type Location struct {
+	ASN       string `json:"asn"`
+	ASO       string `json:"aso"`
 	Continent string `json:"continent"`
 	Country   string `json:"country"`
 	Lat       string `json:"lat"`
 	Long      string `json:"long"`
+	Region    string `json:"region"`
 }
 
 type Provider struct {

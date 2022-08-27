@@ -1,8 +1,12 @@
 package data
 
-import "time"
+import (
+	"time"
+)
 
 type EntryStruct struct {
+	ASN                  string    `json:"asn"`
+	ASO                  string    `json:"aso"`
 	BodyBytes            string    `json:"body_bytes"`
 	Cache                string    `json:"cache"`
 	Cid                  string    `json:"cid"`
@@ -16,7 +20,7 @@ type EntryStruct struct {
 	HttpUserAgent        string    `json:"http_user_agent"`
 	Ip                   string    `json:"ip"`
 	Op                   string    `json:"op"`
-	Regions              []string  `json:"regions"`
+	Region               string    `json:"region"`
 	RequestLength        string    `json:"request_length"`
 	RequestTime          string    `json:"request_time"`
 	Scheme               string    `json:"scheme"`

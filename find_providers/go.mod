@@ -3,7 +3,7 @@ module find_providers
 go 1.18
 
 require (
-	github.com/confluentinc/confluent-kafka-go v1.9.2
+	//github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/influxdb-client-go/v2 v2.9.2
 	github.com/ipfs/go-cid v0.2.0
@@ -12,6 +12,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.16.1
 	github.com/libp2p/go-libp2p-kad-dht v0.16.0
 	github.com/schollz/progressbar/v3 v3.9.0
+	github.com/streadway/amqp v0.0.0-20190827072141-edfb9018d271
 )
 
 require (

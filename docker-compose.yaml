@@ -1,0 +1,43 @@
+services:
+  parser:
+    build:
+      context: .
+      dockerfile: dockerfiles/parser_service.dockerfile
+  find_providers:
+    deploy:
+      mode: replicated
+      replicas: 5
+    build:
+      context: .
+      dockerfile: dockerfiles/find_providers_service.dockerfile
+  db:
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - ipfs-content-location:/var/lib/postgresql/data
+    build:
+      context: .
+      dockerfile: dockerfiles/postgres_db.dockerfile
+
+  dashboard:
+    image: grafana
+    links:
+      - db
+
+  broker:
+    image: rabbitmq:latest
+    ports:
+      - 5672:5672
+
+
+
+  controller:
+    build:
+      context: .
+      dockerfile: dockerfiles/controller.dockerfile
+    links:
+      - parser
+      - find_providers
+      - broker
+      - db
+
