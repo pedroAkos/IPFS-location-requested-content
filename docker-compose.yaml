@@ -1,26 +1,49 @@
+version: "3.9"
+
 services:
   parser:
+    image: pedro_akos/ipfs-gateway-logs-parser:0.1
     build:
       context: .
       dockerfile: dockerfiles/parser_service.dockerfile
+
   find_providers:
+    image: pedro_akos/ipfs-find-providers:0.1
     deploy:
       mode: replicated
       replicas: 5
     build:
       context: .
       dockerfile: dockerfiles/find_providers_service.dockerfile
+
   db:
+    image: pedro_akos/ipfs-gateway-logs-db:0.1
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
-      - ipfs-content-location:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - 5433:5432
     build:
       context: .
       dockerfile: dockerfiles/postgres_db.dockerfile
 
+  web:
+    image: pedro_akos/ipfs-gateway-logs-web:0.1
+    build:
+      context: .
+      dockerfile: dockerfiles/nginx_web.dockerfile
+    ports:
+      - 6098:80
+
+
+
   dashboard:
-    image: grafana
+    image: grafana/grafana:latest
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    ports:
+      - 3001:3000
     links:
       - db
 
@@ -32,12 +55,23 @@ services:
 
 
   controller:
+    image: pedro_akos/ipfs-content-location-controller:0.1
     build:
       context: .
       dockerfile: dockerfiles/controller.dockerfile
+    depends_on:
+      - db
+      - broker
+      - find_providers
+      - parser
     links:
       - parser
       - find_providers
       - broker
       - db
+    restart: unless-stopped
 
+
+volumes:
+  db-data:
+  grafana-storage:

@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	_ "github.com/lib/pq"
 	"github.com/streadway/amqp"
-	"hash"
 	"io"
 	"strconv"
+	"sync"
 	"unicode/utf8"
 
 	"bytes"
@@ -78,16 +78,33 @@ type dbWritable struct {
 	p       providerEntry
 }
 
-var h hash.Hash
+var found_providers_lock *sync.Mutex
+var found_providers map[string]time.Time
+
+var requests_lock *sync.Mutex
+var requests = 0
+
+func incRequests() {
+	requests_lock.Lock()
+	defer requests_lock.Unlock()
+	requests++
+}
+
+func decRequests() {
+	requests_lock.Lock()
+	defer requests_lock.Unlock()
+	requests--
+}
 
 func main() {
 	//var err error
 	concurrency := 100
 
-	h = sha256.New()
-
 	prepareDB()
 
+	requests_lock = new(sync.Mutex)
+	found_providers_lock = new(sync.Mutex)
+	found_providers = make(map[string]time.Time)
 	logCh := make(chan string)
 	reqsCh := make(chan struct{}, concurrency)
 	provsCh := make(chan struct {
@@ -102,8 +119,9 @@ func main() {
 	go fetchProviders(provsCh, parserUrl)
 
 	//requests := 0
+	log.Println("Ready to go!")
 	for {
-		//log.Println("-------------------- Requests:", requests)
+		log.Println("-------------------- Requests:", requests)
 		select {
 		case entry := <-logCh:
 			reqsCh <- struct{}{}
@@ -114,21 +132,27 @@ func main() {
 				<-reqsCh
 			} else {
 				//requests++
+				incRequests()
 				go writeEntryToDB(e, reqId)
-				go func(url string, cid string, t time.Time) {
-					ans := struct {
-						timeOfReq time.Time
-						timeNow   time.Time
-						reqId     string
-						ans       data.JsonAnswer
-						err       error
-					}{timeOfReq: t, timeNow: time.Now(), reqId: reqId}
-					a, e := findProvider(url, cid)
-					ans.ans = a
-					ans.err = e
+				if !foundProviders(e.Cid) {
+					go func(url string, cid string, t time.Time) {
+						ans := struct {
+							timeOfReq time.Time
+							timeNow   time.Time
+							reqId     string
+							ans       data.JsonAnswer
+							err       error
+						}{timeOfReq: t, timeNow: time.Now(), reqId: reqId}
+						a, e := findProvider(url, cid)
+						ans.ans = a
+						ans.err = e
+						<-reqsCh
+						provsCh <- ans
+					}(providersUrl, e.Cid, e.Time)
+				} else {
+					decRequests()
 					<-reqsCh
-					provsCh <- ans
-				}(providersUrl, e.Cid, e.Time)
+				}
 			}
 			//case providers := <-provsCh:
 			//	requests--
@@ -149,12 +173,25 @@ func main() {
 	}
 }
 
+func foundProviders(cid string) bool {
+	found_providers_lock.Lock()
+	defer found_providers_lock.Unlock()
+	t, ok := found_providers[cid]
+	if ok && time.Now().After(t.Add(24*time.Hour)) {
+		return false
+	}
+	return ok
+}
+
 func prepareBroker(logch chan string) {
+
 	switch broker_to_use {
 	case "kafka":
+		log.Println("Preparing kafka broker..")
 		//consumer := prepareKafka()
 		//consumeKafkaLog(consumer, logch)
 	case "rabbitmq":
+		log.Println("Preparing rabbitmq broker..")
 		msgs := prepareRabbitMq()
 		consumeRabbitMq(msgs, logch)
 
@@ -204,6 +241,7 @@ func prepareRabbitMq() <-chan amqp.Delivery {
 }
 
 func genReqId(e data.EntryStruct) string {
+	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%v%v%v%v%v%v%v", e.Time, e.Ip, e.Cid, e.BodyBytes, e.RequestTime, e.RequestLength, e.HttpUserAgent)))
 	return string(h.Sum(nil))
 }
@@ -220,20 +258,34 @@ func fetchProviders(provsCh chan struct {
 	for {
 		providers := <-provsCh
 		//requests--
+		decRequests()
 		if providers.err != nil {
 			log.Println("Error on fetching providers:", providers.err)
 		} else {
-			go func(url string, timeOfReq time.Time, timeNow time.Time, ans data.JsonAnswer, reqId string) {
-				ans.Providers, err = parseProviders(url, ans.Providers)
-				if err != nil {
-					log.Println("Error on parsing providers:", err)
-				} else {
-					writeProvidersToDB(providers.timeOfReq, providers.timeNow, providers.ans, reqId)
-				}
-			}(parserUrl, providers.timeOfReq, providers.timeNow, providers.ans, providers.reqId)
+			if len(providers.ans.Providers) > 0 && foundProvider(providers.ans.Cid) {
+				go func(url string, timeOfReq time.Time, timeNow time.Time, ans data.JsonAnswer, reqId string) {
+					ans.Providers, err = parseProviders(url, ans.Providers)
+					if err != nil {
+						log.Println("Error on parsing providers:", err)
+					} else {
+						writeProvidersToDB(providers.timeOfReq, providers.timeNow, providers.ans)
+					}
+				}(parserUrl, providers.timeOfReq, providers.timeNow, providers.ans, providers.reqId)
+			}
 		}
 	}
 
+}
+
+func foundProvider(cid string) bool {
+	found_providers_lock.Lock()
+	defer found_providers_lock.Unlock()
+	t, ok := found_providers[cid]
+	if !ok || time.Now().After(t.Add(24*time.Hour)) {
+		found_providers[cid] = time.Now()
+		return true
+	}
+	return false
 }
 
 //func prepareKafka() *kafka.Consumer {
@@ -257,6 +309,7 @@ func fetchProviders(provsCh chan struct {
 //}
 
 func prepareDB() {
+	log.Println("Preparing database..")
 	var err error
 	switch db_to_use {
 	case "postgres":
@@ -264,6 +317,7 @@ func prepareDB() {
 			"dbname=%s sslmode=disable",
 			host, port, user, dbname)
 
+		log.Println("Opening connection to postgres database..")
 		db, err = sql.Open("postgres", psqlInfo)
 		if err != nil {
 			panic(err)
@@ -274,6 +328,7 @@ func prepareDB() {
 		}
 
 	case "influx":
+		log.Println("Opening connection to influxdb..")
 		client := influxdb2.NewClient(dbUrl, token)
 		writeAPI = client.WriteAPIBlocking(org, bucket)
 	}
@@ -339,6 +394,8 @@ func writeEntryToPostgres(e data.EntryStruct, reqId string) {
 			request_time, upstream_time,
 			body_bytes, user_agent, cache)
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+			ON CONFLICT ON CONSTRAINT requests_pkey DO
+			NOTHING 
 			`
 	_, err := db.Exec(sqlStatement, reqId, e.Time, e.Cid, checkIfValidString(e.Continent), checkIfValidString(e.Country), checkIfValidString(e.Region), checkIfValidFloat(e.Lat), checkIfValidFloat(e.Long), checkIfValidInt(e.ASN), checkIfValidString(e.ASO),
 		checkIfValidFloat(e.RequestTime), checkIfValidFloat(e.UpstreamResponseTime[0]), checkIfValidFloat(e.BodyBytes), checkIfValidString(e.HttpUserAgent), checkIfValidString(e.Cache))
@@ -363,14 +420,13 @@ func writeEntryToInfluxDB(e data.EntryStruct) {
 	}
 }
 
-func writeProvidersToDB(t time.Time, n time.Time, ans data.JsonAnswer, reqId string) {
+func writeProvidersToDB(t time.Time, n time.Time, ans data.JsonAnswer) {
 	log.Println("Writing to db providers of cid", ans.Cid)
 	for _, prov := range ans.Providers {
 		for _, locs := range prov.Locations {
-			provId := genProvId(t, prov, locs)
 			switch db_to_use {
 			case "postgres":
-				writeProviderToPostgres(t, n, ans, prov, locs, provId, reqId)
+				writeProviderToPostgres(t, n, ans, prov, locs)
 			case "influx":
 				writeProviderToInfluxDB(t, n, ans, prov, locs)
 			}
@@ -378,23 +434,20 @@ func writeProvidersToDB(t time.Time, n time.Time, ans data.JsonAnswer, reqId str
 	}
 }
 
-func genProvId(t time.Time, prov data.Provider, locs data.Location) string {
-	h.Write([]byte(fmt.Sprintf("%v%v%v%v%v%v", t, prov.PeerId, locs.Continent, locs.Country, locs.Long, locs.Lat)))
-	return string(h.Sum(nil))
-}
-
-func writeProviderToPostgres(t time.Time, n time.Time, ans data.JsonAnswer, prov data.Provider, locs data.Location, provId string, reqId string) {
+func writeProviderToPostgres(t time.Time, n time.Time, ans data.JsonAnswer, prov data.Provider, locs data.Location) {
 	sqlStatement := `
 			INSERT INTO public.providers
-			(prov_id, timestamp, cid, continent, country, region, lat, long, asn, aso,
-			request_time, peerID, request_at, req_id)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			(cid, continent, country, region, lat, long, asn, aso,
+			request_time, peerID, found_at, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			ON CONFLICT ON CONSTRAINT providers_pkey DO 
+   			UPDATE SET updated_at = $12
 			`
-	_, err := db.Exec(sqlStatement, provId, t, ans.Cid, checkIfValidString(locs.Continent), checkIfValidString(locs.Country), checkIfValidString(locs.Region), checkIfValidFloat(locs.Lat), checkIfValidFloat(locs.Long), checkIfValidInt(locs.ASN), checkIfValidString(locs.ASO),
-		ans.Dur, checkIfValidString(prov.PeerId), n, reqId)
+	_, err := db.Exec(sqlStatement, ans.Cid, checkIfValidString(locs.Continent), checkIfValidString(locs.Country), checkIfValidString(locs.Region), checkIfValidFloat(locs.Lat), checkIfValidFloat(locs.Long), checkIfValidInt(locs.ASN), checkIfValidString(locs.ASO),
+		ans.Dur, checkIfValidString(prov.PeerId), n, n)
 	if err != nil {
-		log.Println(err, "on", provId, t, ans.Cid, locs.Continent, locs.Country, locs.Region, locs.Lat, locs.Long, locs.ASN, locs.ASO,
-			ans.Dur, prov.PeerId, n, reqId)
+		log.Println(err, "on", ans.Cid, locs.Continent, locs.Country, locs.Region, locs.Lat, locs.Long, locs.ASN, locs.ASO,
+			ans.Dur, prov.PeerId)
 	}
 }
 

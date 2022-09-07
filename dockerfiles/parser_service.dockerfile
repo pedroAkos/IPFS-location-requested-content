@@ -4,12 +4,12 @@ FROM python:3.9-slim-buster as base
 FROM base as builder
 
 WORKDIR /install
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update && apt install -y curl make automake gcc g++ subversion python3-dev && rm -rf /var/lib/apt/lists/*
 COPY scripts/requirements.txt requirements.txt
 RUN pip3 install --prefix=/install -r requirements.txt
 
 ARG MAXMIND_LICENCE_KEY
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt install -y curl && rm -rf /var/lib/apt/lists/*
 RUN mkdir maxmind
 COPY scripts/maxmind/download.sh maxmind/download.sh
 WORKDIR maxmind

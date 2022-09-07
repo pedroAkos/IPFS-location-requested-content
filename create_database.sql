@@ -21,8 +21,6 @@ Create TABLE requests (
 
 
 Create TABLE providers (
-                           prov_id bytea primary key,
-                           timestamp TIMESTAMP not null,
                            cid VARCHAR(100) not null,
                            continent char(2),
                            country char(2),
@@ -33,10 +31,9 @@ Create TABLE providers (
                            aso text,
                            request_time float,
                            peerID varchar(100),
-                           request_at timestamp,
-                           req_id bytea,
-                           constraint req_id foreign key(req_id) references requests
+                           found_at timestamp,
+                           updated_at timestamp,
+                           primary key (cid, peerID)
 );
 
 create index requests_timestamp_idx  on requests(timestamp);
-create index providers_timestamp_idx  on providers(timestamp);

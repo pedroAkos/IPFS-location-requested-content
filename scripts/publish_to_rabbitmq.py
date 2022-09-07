@@ -17,7 +17,7 @@ channel.queue_declare(queue=args.topic)
 print("Connected to Server!")
 
 for line in sys.stdin:
-    print('>', end=' ')
+    #print('>', end=' ')
     line = line.rstrip()
     channel.basic_publish(exchange='',
                           routing_key=args.topic,
