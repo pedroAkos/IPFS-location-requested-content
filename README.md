@@ -7,7 +7,24 @@ Here locality of interest means that content that is requested in a given region
 
 You can find more about this project in this [Notion](https://www.notion.so/pl-strflt/Location-of-IPFS-end-users-and-requested-content-7668e98a725d4eea9f36fcafaabe7120) page.
 
-## How to run:
+The project contains two modes of operating:
+- As a daemon that consumes the logs of an IPFS gateway and produces a measurement of the locality of interest of the requested content.
+- As scripts that process the logs of an IPFS gateway and produce a measurement of the locality of interest of the requested content.
+
+## How to run the daemon:
+For the daemon version, we provide a docker-compose file that contains the following services:
+- The controller service that is responsible for the orchestration of the other services.
+- A parser service that parses the logs of the IPFS gateway into structured data.
+- A find providers service that finds the providers of a given CID.
+- A database service that stores the parsed data.
+- A grafana dashboard service that visualizes the measurement data.
+- A nginx service to serve as a reverse proxy for the grafana dashboard.
+- A RabbitMQ service for publishing and consuming the IPFS gateway log.
+- A helper service that can populate the database with find providers data, in case you don't want to run the find providers service as continuous monitoring due to network resource restrictions.
+
+
+
+## How to run the scripts:
 
 We provide sample data in ``scripts/data/sample`` folder.
 This data is a 80M cut from IPFS gateways from April 2022.
