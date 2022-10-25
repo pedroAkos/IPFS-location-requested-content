@@ -27,7 +27,7 @@ First build all the services through the following command:
 docker-compose build
 ```
 
-The parser service requires a Maxmind Licence Key, which you can get [here](https://www.maxmind.com/en/geolite2/signup). 
+The parser service requires a Maxmind Licence Key, which you can get [here](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en). 
 You need build the parser service with the license key as such:
 
 ```
