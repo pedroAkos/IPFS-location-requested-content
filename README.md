@@ -1,8 +1,11 @@
 # Location of IPFS end-users and requested content
 
+This project contains a measurement architecture to analyse the locality of interest of requested content in the IPFS network.
+Here locality of interest means that content that is requested in a given region is also provided by some peer in that region.
+
+
 
 You can find more about this project in this [Notion](https://www.notion.so/pl-strflt/Location-of-IPFS-end-users-and-requested-content-7668e98a725d4eea9f36fcafaabe7120) page.
-
 
 ## How to run:
 

@@ -3,14 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"find_providers/pkg/data"
+	"find_providers/pkg/model"
+	"find_providers/pkg/providers"
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
 	cid2 "github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 )
@@ -28,14 +29,14 @@ func main() {
 		panic(err)
 	}
 
-	log.Println("My ID: ", h.ID().Pretty())
+	log.Infoln("My ID: ", h.ID().Pretty())
 
 	for _, pi := range dht.GetDefaultBootstrapPeerAddrInfos() {
-		log.Println("Connecting to", pi.ID)
+		log.Debug("Connecting to", pi.ID)
 		if err := h.Connect(context.Background(), pi); err != nil {
-			log.Println("Error connecting to:", err)
+			log.Warning("Error connecting to:", err)
 		} else {
-			log.Println("Connected to:", pi.ID)
+			log.Debug("Connected to:", pi.ID)
 		}
 	}
 
@@ -46,8 +47,9 @@ func main() {
 
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/findProviders/{cid}", findProviders)
+	router.HandleFunc("/findAllProviders/{cid}", findAllProviders)
 
-	log.Println("Running on port ", *port)
+	log.Infoln("Running on port ", *port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), router))
 }
 
@@ -58,21 +60,21 @@ func findProviders(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 400)
 
 	} else {
-		log.Println("Finding providers of cid", cidStr)
+		log.Debug("Finding providers of cid", cidStr)
 		start := time.Now()
 		p, e := kad.FindProviders(context.Background(), cid)
 		dur := time.Now().Sub(start)
 		if e != nil {
 			http.Error(w, e.Error(), 400)
 		} else {
-			ans := data.JsonAnswer{
+			ans := model.JsonAnswer{
 				Cid:       cidStr,
-				Providers: make([]data.Provider, len(p)),
+				Providers: make([]model.Provider, len(p)),
 				Dur:       dur,
 			}
 
 			for i, _p := range p {
-				pstr := data.Provider{
+				pstr := model.Provider{
 					PeerId: _p.ID.Pretty(),
 					MAddrs: make([]string, len(_p.Addrs)),
 				}
@@ -85,7 +87,42 @@ func findProviders(w http.ResponseWriter, r *http.Request) {
 
 			w.WriteHeader(200)
 			_ = json.NewEncoder(w).Encode(ans)
-			log.Println("Resolved providers of cid", cidStr, "duration:", ans.Dur)
+			log.Debug("Resolved providers of cid", cidStr, "duration:", ans.Dur)
 		}
+	}
+}
+
+func findAllProviders(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	cidStr := vars["cid"]
+	if cid, err := cid2.Decode(cidStr); err != nil {
+		http.Error(w, err.Error(), 400)
+
+	} else {
+		log.Debug("Finding providers of cid", cidStr)
+		start := time.Now()
+		p := providers.FindAllOf(cid, kad)
+		dur := time.Now().Sub(start)
+		ans := model.JsonAnswer{
+			Cid:       cidStr,
+			Providers: make([]model.Provider, len(p)),
+			Dur:       dur,
+		}
+
+		for i, _p := range p {
+			pstr := model.Provider{
+				PeerId: _p.Provider.ID.Pretty(),
+				MAddrs: make([]string, len(_p.Provider.Addrs)),
+			}
+
+			for j, _m := range _p.Provider.Addrs {
+				pstr.MAddrs[j] = _m.String()
+			}
+			ans.Providers[i] = pstr
+		}
+
+		w.WriteHeader(200)
+		_ = json.NewEncoder(w).Encode(ans)
+		log.Debug("Resolved providers of cid", cidStr, "duration:", ans.Dur)
 	}
 }

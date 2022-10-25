@@ -1,6 +1,9 @@
-package data
+package model
 
-import "time"
+import (
+	"github.com/libp2p/go-libp2p-core/peer"
+	"time"
+)
 
 type Location struct {
 	ASN       string `json:"asn"`
@@ -19,7 +22,13 @@ type Provider struct {
 }
 
 type JsonAnswer struct {
+	Time      string        `json:"time"`
 	Cid       string        `json:"cid"`
 	Providers []Provider    `json:"providers"`
 	Dur       time.Duration `json:"duration"`
+}
+
+type ProviderInfo struct {
+	Provider peer.AddrInfo
+	Dur      time.Duration
 }

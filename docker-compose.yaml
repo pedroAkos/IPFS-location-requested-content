@@ -2,6 +2,8 @@ version: "3.9"
 
 services:
   parser:
+    deploy:
+      replicas: 10
     image: pedro_akos/ipfs-gateway-logs-parser:0.1
     build:
       context: .
@@ -18,10 +20,15 @@ services:
 
   db:
     image: pedro_akos/ipfs-gateway-logs-db:0.1
+    shm_size: 4g
+    tmpfs:
+      - /tmp:size=4g
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - db-data:/var/lib/postgresql/data
+      - type: tmpfs
+        target: /dev/shm
     ports:
       - 5433:5432
     build:
@@ -52,10 +59,30 @@ services:
     ports:
       - 5672:5672
 
-
+  writer:
+    image: pedro_akos/ipfs-content-location-writer:0.1
+    build:
+      context: .
+      dockerfile: dockerfiles/write_find_provider_logs_to_db.dockerfile
+    depends_on:
+      - db
+      - broker
+      - parser
+    links:
+      - parser
+      - broker
+      - db
+    restart: unless-stopped
+    deploy:
+      replicas: 5
 
   controller:
     image: pedro_akos/ipfs-content-location-controller:0.1
+    command:
+      - "--concurrency"
+      - "200"
+      - "--batch"
+      - "100"
     build:
       context: .
       dockerfile: dockerfiles/controller.dockerfile
@@ -70,6 +97,8 @@ services:
       - broker
       - db
     restart: unless-stopped
+    deploy:
+      replicas: 5
 
 
 volumes:

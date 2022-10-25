@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"find_providers/pkg/model"
+	"find_providers/pkg/providers"
 	"flag"
 	"fmt"
 	cid2 "github.com/ipfs/go-cid"
@@ -16,6 +18,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -31,6 +34,7 @@ var setniloutput = progressbar.OptionSetWriter(ioutil.Discard)
 func main() {
 	//logging.SetAllLoggers(logging.LevelDebug)
 	file := flag.String("f", "", "File with content to get")
+	resolve_peers := flag.Bool("resPeers", false, "Resolve peers instead of cids")
 	concurrency = flag.Int("c", 5, "Number of concurrent requests")
 	waitime := flag.Duration("w", time.Minute*0, "Grace period before workload")
 	logfile := flag.String("out", "", "Output file")
@@ -39,7 +43,6 @@ func main() {
 	progress = flag.Bool("progress", false, "Show progress bar")
 
 	flag.Parse()
-
 	if f, err := os.Open(*file); err != nil {
 		panic(err)
 	} else {
@@ -71,6 +74,11 @@ func main() {
 		panic(err)
 	}
 
+	err = kad.Bootstrap(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
 	if *logfile != "" {
 		f, err := os.Create(*logfile)
 		if err != nil {
@@ -86,26 +94,26 @@ func main() {
 	case <-time.After(*waitime):
 		start := time.Now()
 		log.Println("Beginning workload")
-		startWorkload(kad, *file)
+		startWorkload(kad, *file, *resolve_peers)
 		log.Println("Finished workload", "time", time.Now().Sub(start))
 	case <-stop:
 		os.Exit(0)
 	}
 }
 
-func startWorkload(kad *dht.IpfsDHT, file string) {
+func startWorkload(kad *dht.IpfsDHT, file string, resolve_peers bool) {
 	if f, err := os.Open(file); err != nil {
 		panic(err)
 	} else {
 		defer func(f *os.File) {
 			_ = f.Close()
 		}(f)
+		getKeys(kad, f, *concurrency, resolve_peers)
 
-		getKeys(kad, f, *concurrency)
 	}
 }
 
-func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int) {
+func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int, resolve_peers bool) {
 	global := 0
 	tokens := make(chan struct{}, concurrent)
 	answers := make(chan answer)
@@ -138,7 +146,11 @@ func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int) {
 			global--
 		}
 		//continue
-		searchCid(kad, cidStr, &global, tokens, answers)
+		if resolve_peers {
+			searchPeer(kad, cidStr, &global, tokens, answers)
+		} else {
+			searchCid(kad, cidStr, &global, tokens, answers)
+		}
 	}
 	for global > 0 { //if there are still pending answers wait for them
 		_ = bar.Add(1)
@@ -150,6 +162,54 @@ func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int) {
 	_ = bar.Close()
 }
 
+func searchPeer(kad *dht.IpfsDHT, str string, global *int, tokens chan struct{}, answers chan answer) {
+	strsplit := strings.Split(str, " ")
+	if cid, err := cid2.Decode(strsplit[0]); err != nil {
+		log.Println("Error: ", err, " on decoding cid", str)
+	} else {
+		if id, err := peer.Decode(strings.Trim(strsplit[1], "{}")); err != nil {
+			log.Println("Error: ", err, " on decoding peer", strings.Trim(strsplit[1], "{}"))
+		} else {
+			go func(id peer.ID, cid cid2.Cid) {
+				start := time.Now()
+				peersCh := make(chan struct {
+					addr peer.AddrInfo
+					cid  cid2.Cid
+					err  error
+				})
+				opCtx := context.Background()
+				var cancel context.CancelFunc = nil
+				if *timeout > 0 {
+					opCtx, cancel = context.WithTimeout(context.Background(), *timeout)
+					defer cancel()
+				}
+				go func(id peer.ID, cid cid2.Cid, opCtx context.Context) {
+					p, err := kad.FindPeer(opCtx, id)
+					if err != nil {
+						p.ID = id
+					}
+					peersCh <- struct {
+						addr peer.AddrInfo
+						cid  cid2.Cid
+						err  error
+					}{addr: p, cid: cid, err: err}
+				}(id, cid, opCtx)
+
+				select {
+				case p := <-peersCh:
+					answers <- answer{p: []model.ProviderInfo{{
+						Provider: p.addr,
+						Dur:      time.Now().Sub(start),
+					}}, cid: p.cid, err: p.err, dur: time.Now().Sub(start)}
+				}
+				<-tokens //try to remove 1 token
+
+			}(id, cid)
+			*global++
+		}
+	}
+}
+
 func searchCid(kad *dht.IpfsDHT, cidStr string, global *int, tokens chan struct{}, answers chan answer) {
 	if cid, err := cid2.Decode(cidStr); err != nil {
 		log.Println("Error: ", err, " on decoding ", cidStr)
@@ -157,7 +217,7 @@ func searchCid(kad *dht.IpfsDHT, cidStr string, global *int, tokens chan struct{
 		go func(cid cid2.Cid) {
 			start := time.Now()
 			providersCh := make(chan struct {
-				providers []peer.AddrInfo
+				providers []model.ProviderInfo
 				err       error
 			})
 			opCtx := context.Background()
@@ -167,11 +227,11 @@ func searchCid(kad *dht.IpfsDHT, cidStr string, global *int, tokens chan struct{
 				defer cancel()
 			}
 			go func(cid cid2.Cid, opCtx context.Context) {
-				p, e := kad.FindProviders(opCtx, cid)
+				p := providers.FindAllOf(cid, kad)
 				providersCh <- struct {
-					providers []peer.AddrInfo
+					providers []model.ProviderInfo
 					err       error
-				}{providers: p, err: e}
+				}{providers: p, err: nil}
 			}(cid, opCtx)
 
 			select {
@@ -204,7 +264,7 @@ func loadFile(reader *bufio.Reader, lines int) []string {
 }
 
 type answer struct {
-	p   []peer.AddrInfo
+	p   []model.ProviderInfo
 	cid cid2.Cid
 	dur time.Duration
 	err error

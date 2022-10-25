@@ -6,7 +6,7 @@ import pandas as pd
 
 def lookup_ip(ip):
     match = geolite2.lookup(ip)
-    print(ip, match)
+    #print(ip, match)
 
     continent, country, regions = pd.NA, pd.NA, pd.NA
     location = None
@@ -27,9 +27,9 @@ def lookup_ip(ip):
 
 
 def lookup_geoip2(ip):
-    continent, country, region = pd.NA, pd.NA, pd.NA
+    continent, country, region = None, None, None
     latitude, longitude = '', ''
-    asn, aso = pd.NA, pd.NA
+    asn, aso = None, None
     with geoip2.database.Reader('maxmind/GeoLite2-City.mmdb') as reader:
         try:
             response = reader.city(ip)
@@ -51,5 +51,5 @@ def lookup_geoip2(ip):
         except geoip2.errors.AddressNotFoundError as e:
             pass
 
-    print(ip, continent, country, region, latitude, longitude, asn, aso)
+    #print(ip, continent, country, region, latitude, longitude, asn, aso)
     return continent, country, region, latitude, longitude, asn, aso

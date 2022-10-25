@@ -16,6 +16,11 @@ require (
 )
 
 require (
+	github.com/confluentinc/confluent-kafka-go v1.9.2
+	github.com/spf13/pflag v1.0.3
+)
+
+require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.22.1 // indirect
