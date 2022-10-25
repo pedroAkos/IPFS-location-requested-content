@@ -22,6 +22,22 @@ For the daemon version, we provide a docker-compose file that contains the follo
 - A RabbitMQ service for publishing and consuming the IPFS gateway log.
 - A helper service that can populate the database with find providers data, in case you don't want to run the find providers service as continuous monitoring due to network resource restrictions.
 
+First build all the services through the following command:
+``` 
+docker-compose build
+```
+
+The parser service requires a Maxmind Licence Key, which you can get [here](https://www.maxmind.com/en/geolite2/signup). 
+You need build the parser service with the license key as such:
+
+```
+docker-compose build --args MAXMIND_LICENSE_KEY=<your license key> parser
+```
+
+Then you can run the services through the following command:
+```
+docker stack deploy -c docker-compose.yml ipfs-loc
+```
 
 
 ## How to run the scripts:
