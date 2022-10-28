@@ -31,7 +31,7 @@ The parser service requires a Maxmind Licence Key, which you can get [here](http
 You need build the parser service with the license key as such:
 
 ```
-docker-compose build --args MAXMIND_LICENSE_KEY=<your license key> parser
+docker-compose build --build-arg MAXMIND_LICENSE_KEY=<your license key> parser
 ```
 
 Then you can run the services through the following command:
