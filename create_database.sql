@@ -16,7 +16,8 @@ Create TABLE requests (
                           upstream_time float,
                           body_bytes bigint,
                           user_agent text,
-                          cache text
+                          cache text,
+                          status int
 );
 
 

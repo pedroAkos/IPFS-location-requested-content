@@ -33,7 +33,6 @@ def parse():
     try:
         entry = gateway.parse_log_entry(logEntry)
         if entry['op'] == 'GET' and \
-                200 <= int(entry['status']) < 400 and \
                 entry['ip'] != '127.0.0.1' and \
                 entry['ip'] != '::1':
             cid = gateway.extract_cid(entry['http_host'], entry['target'])
@@ -78,10 +77,12 @@ def parse_find_providers_log():
                     else:
                         try:
                             continent, country, regions, lat, long, asn, aso = location.lookup_geoip2(addr)
-                            continent, country, regions, lat, long, asn, aso = convert_location(continent, country, regions,
+                            continent, country, regions, lat, long, asn, aso = convert_location(continent, country,
+                                                                                                regions,
                                                                                                 lat, long, asn, aso)
                             prov['locations'].append(
-                                {'continent': continent, 'country': country, 'region': regions, 'lat': lat, 'long': long,
+                                {'continent': continent, 'country': country, 'region': regions, 'lat': lat,
+                                 'long': long,
                                  "asn": asn, "aso": aso})
                         except Exception as e:
                             logging.error('Error fetching location: %s', e)
