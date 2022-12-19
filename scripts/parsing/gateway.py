@@ -6,10 +6,36 @@ import pandas as pd
 
 
 def get_unique_cids(df: pd.DataFrame) -> pd.DataFrame:
+    """ Returns a dataframe with unique cids
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        dataframe with cids
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with unique cids
+
+    """
     return df[['cid']].drop_duplicates()
 
 
 def filter_data(df: pd.DataFrame) -> pd.DataFrame:
+    """ Filters dataframe to only include GET requests
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        dataframe with cids
+
+    Returns
+    -------
+    pd.DataFrame
+        dataframe with only GET requests
+
+    """
     # filter for GET operations
     df = df[df['op'] == 'GET']
 
@@ -23,6 +49,21 @@ def filter_data(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def extract_cid(http_host: str, target: str) -> str:
+    """ Extracts cid from http_host and target
+
+    Parameters
+    ----------
+    http_host : str
+        http_host
+    target : str
+        target
+
+    Returns
+    -------
+    str
+        cid
+
+    """
     link = http_host + target
     cid = []
     cid.extend(re.findall('Qm\w+', link))
@@ -32,20 +73,43 @@ def extract_cid(http_host: str, target: str) -> str:
     elif len(cid) == 0:
         return pd.NA
     else:
-        ## which cid should we return ? all ?
-        ## return the first for now
+        # return the first
         return cid[0]
 
 
 def extract_date(time: str) -> datetime:
+    """ Extracts date from time
+
+    Parameters
+    ----------
+    time : str
+        time
+
+    Returns
+    -------
+    datetime
+        date
+
+    """
     time = time.strip('][')
     return dateutil.parser.parse(time)
 
 
+def parse_log_entry(log_entry: str) -> dict[str, str]:
+    """ Parses log entry
 
+    Parameters
+    ----------
+    log_entry : str
+        log entry
 
-def parse_log_entry(logEntry: str) -> dict[str, str]:
-    matches = re.findall('\"(.*?)\"', logEntry)  # finds all matches
+    Returns
+    -------
+    dict[str, str]
+        parsed log entry
+
+    """
+    matches = re.findall('\"(.*?)\"', log_entry)  # finds all matches
     request = matches[0]
     http_refer = matches[1]
     http_user_agent = matches[2]
@@ -54,7 +118,7 @@ def parse_log_entry(logEntry: str) -> dict[str, str]:
     target = tokens[1]
     http = tokens[2]
 
-    entry = re.sub('\"(.*?)\"', '', logEntry)  # substitutes all matches with '' in line
+    entry = re.sub('\"(.*?)\"', '', log_entry)  # substitutes all matches with '' in line
     tokens = entry.split(' ')
     i = 0
     ip = tokens[i]
@@ -91,11 +155,10 @@ def parse_log_entry(logEntry: str) -> dict[str, str]:
     i += 1
     if i < len(tokens):
         scheme = tokens[i]  # [:-1] if \n in log entry
-    elif 'joaoleitao' in logEntry:
+    elif 'joaoleitao' in log_entry:
         scheme = http_host
         http_host = server_name
         server_name = '*.ipfs.joaoleitao.org'
-
 
     return {'ip': ip,
             'time': time,
@@ -113,5 +176,5 @@ def parse_log_entry(logEntry: str) -> dict[str, str]:
             'http_user_agent': http_user_agent,
             'server_name': server_name,
             'http_host': http_host,
-            'scheme': scheme}
-
+            'scheme': scheme,
+            }

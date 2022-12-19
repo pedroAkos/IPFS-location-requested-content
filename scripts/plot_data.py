@@ -7,10 +7,11 @@ import argparse
 
 parser = argparse.ArgumentParser()
 
-#-d data -o output -t type
+# -d data -o output -t type
 parser.add_argument('-d', '--dataset', help="Dataset file")
 parser.add_argument('-o', '--output', help="Output file to plot")
-parser.add_argument('-t', '--type', help="Heatmap type", choices=['country', 'continent', 'country_by_requests', 'continent_by_requests'])
+parser.add_argument('-t', '--type', help="Heatmap type",
+                    choices=['country', 'continent', 'country_by_requests', 'continent_by_requests'])
 
 args = parser.parse_args()
 

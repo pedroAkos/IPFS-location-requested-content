@@ -5,8 +5,14 @@ import pandas as pd
 
 
 def lookup_ip(ip):
+    """ Lookup IP address using GeoLite2
+
+        Args:
+            ip (str): IP address to lookup
+    """
+
     match = geolite2.lookup(ip)
-    #print(ip, match)
+    # print(ip, match)
 
     continent, country, regions = pd.NA, pd.NA, pd.NA
     location = None
@@ -16,7 +22,7 @@ def lookup_ip(ip):
         continent = match.continent  # return the continent
         country = match.country  # returns the country
         regions = match.subdivisions  # this will return a list of the regions
-        location = match.location #a tuple of (lat, long)
+        location = match.location  # a tuple of (lat, long)
 
     if location is None:
         location = ('', '')
@@ -24,9 +30,12 @@ def lookup_ip(ip):
     return continent, country, regions, str(location[0]), str(location[1]), asn, aso
 
 
-
-
 def lookup_geoip2(ip):
+    """ Lookup IP address using GeoIP2
+
+        Args:
+            ip (str): IP address to lookup
+    """
     continent, country, region = None, None, None
     latitude, longitude = '', ''
     asn, aso = None, None
@@ -51,5 +60,5 @@ def lookup_geoip2(ip):
         except geoip2.errors.AddressNotFoundError as e:
             pass
 
-    #print(ip, continent, country, region, latitude, longitude, asn, aso)
+    # print(ip, continent, country, region, latitude, longitude, asn, aso)
     return continent, country, region, latitude, longitude, asn, aso

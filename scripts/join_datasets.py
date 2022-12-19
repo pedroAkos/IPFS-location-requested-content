@@ -2,6 +2,7 @@ import sys
 
 import pandas as pd
 
+# Joins the datasets of the gateway and the providers.
 
 requests_file = sys.argv[1]
 providers_file = sys.argv[2]

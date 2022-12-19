@@ -11,6 +11,18 @@ app = Flask(__name__)
 
 
 def convert_location(continent, country, regions, lat, long, asn, aso):
+    """ Converts the location to string
+
+    Args:
+        continent (str): Continent
+        country (str): Country
+        regions (str): Regions
+        lat (str): Latitude
+        long (str): Longitude
+        asn (str): ASN
+        aso (str): ASO
+    """
+
     if pd.isna(continent):
         continent = ""
     if pd.isna(country):
@@ -28,10 +40,15 @@ def convert_location(continent, country, regions, lat, long, asn, aso):
 
 @app.post("/parse")
 def parse():
-    logEntry = request.data.decode('UTF-8')
-    logging.debug("Parsing: %s", logEntry)
+    """ Parses the request and returns the result
+
+    Returns:
+        dict: Result
+    """
+    log_entry = request.data.decode('UTF-8')
+    logging.debug("Parsing: %s", log_entry)
     try:
-        entry = gateway.parse_log_entry(logEntry)
+        entry = gateway.parse_log_entry(log_entry)
         if entry['op'] == 'GET' and \
                 entry['ip'] != '127.0.0.1' and \
                 entry['ip'] != '::1':
@@ -59,6 +76,11 @@ def parse():
 
 @app.post("/parse/findProvidersLog")
 def parse_find_providers_log():
+    """ Parses an entry of the find providers process and returns the result
+
+    Returns:
+        dict: Result
+    """
     logEntry = request.data.decode('UTF-8')
     logging.debug("Parsing: %s", logEntry)
     try:
@@ -95,6 +117,12 @@ def parse_find_providers_log():
 
 @app.post("/locate_providers")
 def locate_providers():
+    """ Gets the geolocation information for providers
+
+    Returns:
+        dict: Result
+    """
+
     if request.is_json:
         provs = request.get_json()
         for i in range(0, len(provs)):

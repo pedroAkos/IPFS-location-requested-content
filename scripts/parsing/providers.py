@@ -1,10 +1,24 @@
 import re
 
 import socket
+from typing import Dict, List, Any, Tuple, Union
+
 import pandas as pd
 
 
 def get_protocol_and_ip(maddr: str) -> (str, str):
+    """ Extracts protocol and ip from maddr
+
+    Parameters
+    ----------
+    maddr : str
+        maddr
+
+    Returns
+    -------
+    (str, str)
+        protocol and ip
+    """
     try:
         splitted = maddr.split('/')
         if 'p2p-circuit' in maddr:
@@ -33,10 +47,34 @@ def get_protocol_and_ip(maddr: str) -> (str, str):
 
 
 def extract_ips_from_maddr(maddr: str) -> (str, str):
+    """ Extracts protocol and ip from maddr
+
+    Parameters
+    ----------
+    maddr : str
+        maddr
+
+    Returns
+    -------
+    (str, str)
+        protocol and ip
+    """
     return get_protocol_and_ip(maddr)
 
 
-def parse_providers(peers: str) -> dict[str, str]:
+def parse_providers(peers: str) -> dict[str, list[Any]]:
+    """ Parses providers
+
+    Parameters
+    ----------
+    peers : str
+        peers
+
+    Returns
+    -------
+    dict[str, str]
+        parsed providers
+    """
     providers = {}
     # find all matches of the regex
     for match in re.finditer('{(.*?): \[(.*?)\]}', peers):
@@ -54,7 +92,18 @@ def parse_providers(peers: str) -> dict[str, str]:
     return providers
 
 
-def parse_entry(line: str) -> (str, str, dict[str, str], str):
+def parse_entry(line: str) -> tuple[Union[str, Any], Union[str, Any], dict[str, list[Any]], Union[str, Any]]:
+    """ Parses log entry
+    Parameters
+    ----------
+    line : str
+        log entry
+    Returns
+    -------
+    tuple[Union[str, Any], Union[str, Any], dict[str, list[Any]], Union[str, Any]]
+        parsed log entry
+
+    """
     match = re.match('(.*) Found:  (.*)  in peers:  (.*)  time:  (.*)', line)
     time = match.group(1)
     cid = match.group(2)
@@ -65,6 +114,18 @@ def parse_entry(line: str) -> (str, str, dict[str, str], str):
 
 
 def parse_failed_entry(line):
+    """ Parses log entry
+
+    Parameters
+    ----------
+    line : str
+        log entry
+
+    Returns
+    -------
+    tuple[Union[str, Any], Union[str, Any], dict[str, list[Any]], Union[str, Any]]
+        parsed log entry
+    """
     match = re.match('(.*) Failed:  (.*) err:  (.*)  in peers:  (.*)  time:  (.*)', line)
     time = match.group(1)
     cid = match.group(2)

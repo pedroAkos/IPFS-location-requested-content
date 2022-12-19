@@ -5,12 +5,24 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-def genMatrix(df: pd.DataFrame, groupX: list[str], groupY: list[str], provsCount: pd.Series = None,
-              nodes: pd.Series = None, requests: pd.Series = None):
+def gen_matrix(df: pd.DataFrame, group_x: list[str], group_y: list[str], provs_count: pd.Series = None,
+               nodes: pd.Series = None, requests: pd.Series = None):
+    """ Generates a matrix of the number of requests from group_x to group_y.
+
+    :param df: The dataframe containing the data.
+    :param group_x: The columns to group by on the x axis.
+    :param group_y: The columns to group by on the y axis.
+    :param provs_count: The number of providers for each group on the x axis.
+    :param nodes: The number of nodes for each group on the y axis.
+    :param requests: The number of requests for each group on the x axis.
+    :return: A matrix of the number of requests from group_x to group_y.
+    """
+
+
     # print(df)
     dd = df.reset_index()
-    reqs = dd.groupby(groupX).groups
-    provs = dd.groupby(groupY).groups
+    reqs = dd.groupby(group_x).groups
+    provs = dd.groupby(group_y).groups
 
     all = list(set(reqs.keys()).union(set(provs.keys())))
     all.sort()
@@ -29,7 +41,7 @@ def genMatrix(df: pd.DataFrame, groupX: list[str], groupY: list[str], provsCount
         j -= 1
 
     index, columns = all, all
-    if len(groupX) == 2:
+    if len(group_x) == 2:
         index = ['{}_{}'.format(g[0], g[1]) for g in all]
         columns = ['{}_{}'.format(g[0], g[1]) for g in all]
 
@@ -39,13 +51,13 @@ def genMatrix(df: pd.DataFrame, groupX: list[str], groupY: list[str], provsCount
     for idx, r in df.iterrows():
         r_l = None
         p_l = None
-        if len(groupX) == 1:
+        if len(group_x) == 1:
             x1, y1 = idx
             i = reqsMap[x1]
             j = provsMap[y1]
             r_l = x1
             p_l = y1
-        elif len(groupX) == 2:
+        elif len(group_x) == 2:
             x1, x2, y1, y2 = idx
             i = reqsMap[(x1, x2)]
             j = provsMap[(y1, y2)]
@@ -55,15 +67,15 @@ def genMatrix(df: pd.DataFrame, groupX: list[str], groupY: list[str], provsCount
             print("Error on", idx, r)
 
         count = r['count']
-        if requests is not None and provsCount is not None:
+        if requests is not None and provs_count is not None:
             count = (count / requests.loc[r_l]['count'])
         elif requests is not None:
             count = (count / requests.loc[r_l]['count'])
-        elif provsCount is not None and nodes is not None:
-            count = (count / nodes.loc[r_l]['id']) / (provsCount.loc[p_l]['count'] / nodes.loc[p_l]['id'])
-        elif provsCount is not None:
+        elif provs_count is not None and nodes is not None:
+            count = (count / nodes.loc[r_l]['id']) / (provs_count.loc[p_l]['count'] / nodes.loc[p_l]['id'])
+        elif provs_count is not None:
             # print(provsCount)
-            count = count / provsCount.loc[p_l]['count']
+            count = count / provs_count.loc[p_l]['count']
         elif nodes is not None:
             count = (count / nodes.loc[r_l]['id']) / (nodes.loc[p_l]['id'])
 
@@ -75,9 +87,21 @@ def genMatrix(df: pd.DataFrame, groupX: list[str], groupY: list[str], provsCount
     return heat
 
 
-def plot_heatmap(df: pd.DataFrame, out: str = None, groupX: list[str] = None, groupY: list[str] = None,
-                 provsCount: pd.Series = None, nodes: pd.Series = None, requests: pd.Series = None):
-    heat = genMatrix(df, groupX, groupY, provsCount, nodes, requests)
+def plot_heatmap(df: pd.DataFrame, out: str = None, group_x: list[str] = None, group_y: list[str] = None,
+                 provs_count: pd.Series = None, nodes: pd.Series = None, requests: pd.Series = None):
+    """ Plots a heatmap of the number of requests from group_x to group_y.
+
+    :param df: The dataframe containing the data.
+    :param out: The output file.
+    :param group_x: The columns to group by on the x axis.
+    :param group_y: The columns to group by on the y axis.
+    :param provs_count: The number of providers for each group on the x axis.
+    :param nodes: The number of nodes for each group on the y axis.
+    :param requests: The number of requests for each group on the x axis.
+
+    """
+
+    heat = gen_matrix(df, group_x, group_y, provs_count, nodes, requests)
     ax = sns.heatmap(heat)
     ax.set_xlabel('Requesters')
     ax.set_ylabel('Providers')
@@ -89,24 +113,46 @@ def plot_heatmap(df: pd.DataFrame, out: str = None, groupX: list[str] = None, gr
 
 
 def plot_by_continent(df: pd.DataFrame, out=None):
+    """ Plots a heatmap of the number of requests from continent_request to continent_provider.
+
+    :param df: The dataframe containing the data.
+    :param out: The output file.
+    """
+
     df = df.groupby(['continent_request', 'continent_provider']).count()
     df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request'], ['continent_provider'])
 
 
 def plot_by_continent_by_requests(df: pd.DataFrame, out=None):
+    """ Plots a heatmap of the number of requests from continent_request to continent_provider.
+
+    :param df: The dataframe containing the data.
+    :param out: The output file.
+    """
+
     df = df.groupby(['continent_request', 'continent_provider']).count()
     df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request'], ['continent_provider'], requests=df.groupby('continent_request').sum())
 
 
 def plot_by_country(df: pd.DataFrame, out=None):
+    """ Plots a heatmap of the number of requests from country_request to country_provider.
+
+    :param df: The dataframe containing the data.
+    :param out: The output file.
+    """
     df = df.groupby(['continent_request', 'country_request', 'continent_provider', 'country_provider']).count()
     df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request', 'country_request'], ['continent_provider', 'country_provider'])
 
 
 def plot_by_country_by_requests(df: pd.DataFrame, out=None):
+    """ Plots a heatmap of the number of requests from country_request to country_provider.
+
+    :param df: The dataframe containing the data.
+    :param out: The output file.
+    """
     df = df.groupby(['continent_request', 'country_request', 'continent_provider', 'country_provider']).count()
     df = df.rename(columns={'cid': 'count'})
     plot_heatmap(df, out, ['continent_request', 'country_request'], ['continent_provider', 'country_provider'],
