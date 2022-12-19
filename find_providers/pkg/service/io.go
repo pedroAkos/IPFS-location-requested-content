@@ -5,6 +5,7 @@ import (
 	"net/http"
 )
 
+// SendRequest sends a request to the given url
 func SendRequest(method string, url string, contentType string, body io.Reader) *http.Response {
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, body)

@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// FindAllOf finds all providers of a given CID
 func FindAllOf(cid cid2.Cid, kad *dht.IpfsDHT) []model.ProviderInfo {
 	providers := make([]model.ProviderInfo, 0)
 	start := time.Now()

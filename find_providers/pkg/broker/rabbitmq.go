@@ -2,14 +2,16 @@ package broker
 
 import "github.com/streadway/amqp"
 
-func consumeRabbitMq(msgs <-chan amqp.Delivery, logch chan string) {
+// consumeRabbitMq consumes messages from a RabbitMQ broker
+func consumeRabbitMq(msgs <-chan amqp.Delivery, logCh chan string) {
 	for m := range msgs {
-		logch <- string(m.Body)
+		logCh <- string(m.Body)
 	}
 }
 
-func prepareRabbitMq(rabbitmq_host, group_id string) <-chan amqp.Delivery {
-	conn, err := amqp.Dial(rabbitmq_host)
+// prepareRabbitMq prepares a connection to a RabbitMQ broker
+func prepareRabbitMq(rabbitmqHost, groupId string) <-chan amqp.Delivery {
+	conn, err := amqp.Dial(rabbitmqHost)
 	if err != nil {
 		panic(err)
 	}
@@ -18,7 +20,7 @@ func prepareRabbitMq(rabbitmq_host, group_id string) <-chan amqp.Delivery {
 		panic(err)
 	}
 	q, err := ch.QueueDeclare(
-		group_id,
+		groupId,
 		false,
 		false,
 		false,

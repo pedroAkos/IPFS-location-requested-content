@@ -42,6 +42,8 @@ def extract_date(time: str) -> datetime:
     return dateutil.parser.parse(time)
 
 
+
+
 def parse_log_entry(logEntry: str) -> dict[str, str]:
     matches = re.findall('\"(.*?)\"', logEntry)  # finds all matches
     request = matches[0]
@@ -87,7 +89,13 @@ def parse_log_entry(logEntry: str) -> dict[str, str]:
     i += 1
     http_host = tokens[i]
     i += 1
-    scheme = tokens[i]  # [:-1] if \n in log entry
+    if i < len(tokens):
+        scheme = tokens[i]  # [:-1] if \n in log entry
+    elif 'joaoleitao' in logEntry:
+        scheme = http_host
+        http_host = server_name
+        server_name = '*.ipfs.joaoleitao.org'
+
 
     return {'ip': ip,
             'time': time,
@@ -106,3 +114,4 @@ def parse_log_entry(logEntry: str) -> dict[str, str]:
             'server_name': server_name,
             'http_host': http_host,
             'scheme': scheme}
+

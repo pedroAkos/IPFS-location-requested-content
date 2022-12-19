@@ -53,6 +53,8 @@ func main() {
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), router))
 }
 
+// findProviders finds the provider records of a given CID
+// Performs the default search, returns a max of 20 records
 func findProviders(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	cidStr := vars["cid"]
@@ -92,6 +94,8 @@ func findProviders(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// findAllProviders finds all the provider records of a given CID
+// Performs an exhaustive search
 func findAllProviders(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	cidStr := vars["cid"]

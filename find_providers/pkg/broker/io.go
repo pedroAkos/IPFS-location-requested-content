@@ -2,10 +2,11 @@ package broker
 
 import log "github.com/sirupsen/logrus"
 
-func PrepareBroker(broker_to_use, host, topic string) chan string {
+// PrepareBroker prepares a broker for reading
+func PrepareBroker(brokerToUse, host, topic string) chan string {
 
 	logch := make(chan string)
-	switch broker_to_use {
+	switch brokerToUse {
 	case "kafka":
 		log.Debug("Preparing kafka broker..")
 		//consumer := prepareKafka()

@@ -100,14 +100,24 @@ def locate_providers():
         for i in range(0, len(provs)):
             provs[i]['locations'] = []
             for maddr in provs[i]['maddrs']:
-                ip = providers.extract_ips_from_maddr(maddr)
-                if ip is not pd.NA and ip != '127.0.0.1' and ip != '::1':
-                    continent, country, regions, lat, long, asn, aso = location.lookup_geoip2(ip)
-                    continent, country, regions, lat, long, asn, aso = convert_location(continent, country, regions,
-                                                                                        lat, long, asn, aso)
-                    provs[i]['locations'].append(
-                        {'continent': continent, 'country': country, 'region': regions, 'lat': lat, 'long': long,
-                         "asn": asn, "aso": aso})
+                proto, addr = providers.extract_ips_from_maddr(maddr)
+                if addr is not None and addr != '127.0.0.1' and addr != '::1':
+                    if proto == 'relay':
+                        provs[i]['locations'].append(
+                            {'continent': 'RL', 'country': None, 'region': None, 'lat': None, 'long': None,
+                             "asn": None, "aso": None})
+                    else:
+                        try:
+                            continent, country, regions, lat, long, asn, aso = location.lookup_geoip2(addr)
+                            continent, country, regions, lat, long, asn, aso = convert_location(continent, country,
+                                                                                                regions,
+                                                                                                lat, long, asn, aso)
+                            provs[i]['locations'].append(
+                                {'continent': continent, 'country': country, 'region': regions, 'lat': lat, 'long': long,
+                                 "asn": asn, "aso": aso})
+                        except Exception as e:
+                            logging.error('Error fetching location: %s', e)
+                            return {"error": e}, 400
         logging.debug('Parsed providers: %s', provs)
         return provs, 200
     return {"error": "Request must be a JSON"}, 400

@@ -4,10 +4,12 @@ services:
   parser:
     deploy:
       replicas: 10
-    image: pedro_akos/ipfs-gateway-logs-parser:0.1
+    image: pedro_akos/ipfs-gateway-logs-parser:0.1a-patched
     build:
       context: .
       dockerfile: dockerfiles/parser_service.dockerfile
+    volumes:
+      - /home/op/IPFS-location-requested-content/scripts/maxmind:/app/maxmind
 
   find_providers:
     image: pedro_akos/ipfs-find-providers:0.1
@@ -19,7 +21,7 @@ services:
       dockerfile: dockerfiles/find_providers_service.dockerfile
 
   db:
-    image: pedro_akos/ipfs-gateway-logs-db:0.1
+    image: pedro_akos/ipfs-gateway-logs-db:0.2
     shm_size: 4g
     tmpfs:
       - /tmp:size=4g

@@ -14,9 +14,9 @@ import (
 )
 
 type DB struct {
-	db_to_use string
-	writeAPI  api.WriteAPIBlocking
-	db        *sql.DB
+	dbToUse  string
+	writeAPI api.WriteAPIBlocking
+	db       *sql.DB
 }
 
 type providerEntry struct {
@@ -33,17 +33,18 @@ type dbWritable struct {
 	p       providerEntry
 }
 
-func PrepareDB(db_to_use string, conf Config) *DB {
+// PrepareDB prepares the database for writing
+func PrepareDB(dbToUse string, conf Config) *DB {
 	log.Debug("Preparing database..")
 
 	db := &DB{
-		db_to_use: db_to_use,
-		writeAPI:  nil,
-		db:        nil,
+		dbToUse:  dbToUse,
+		writeAPI: nil,
+		db:       nil,
 	}
 
 	var err error
-	switch db_to_use {
+	switch dbToUse {
 	case "postgres":
 		pconf := conf.(PostgresConf)
 		psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
@@ -70,9 +71,10 @@ func PrepareDB(db_to_use string, conf Config) *DB {
 	return db
 }
 
+// WriteEntryToDB writes the entry to the database
 func (db *DB) WriteEntryToDB(e model.EntryStruct, reqId string) {
 	log.Debug("Writing to db request of cid", e.Cid)
-	switch db.db_to_use {
+	switch db.dbToUse {
 	case "postgres":
 		db.writeEntryToPostgres(e, reqId)
 	case "influx":
@@ -80,6 +82,7 @@ func (db *DB) WriteEntryToDB(e model.EntryStruct, reqId string) {
 	}
 }
 
+// writeEntryToPostgres writes the entry to the postgres database
 func (db *DB) writeEntryToPostgres(e model.EntryStruct, reqId string) {
 	sqlStatement := `INSERT INTO public.requests 
 			(req_id, timestamp, cid, continent, country, region, lat, long, asn, aso,
@@ -96,6 +99,7 @@ func (db *DB) writeEntryToPostgres(e model.EntryStruct, reqId string) {
 	}
 }
 
+// writeEntryToInfluxDB writes the entry to the influxdb database
 func (db *DB) writeEntryToInfluxDB(e model.EntryStruct) {
 	p := influxdb2.NewPoint("requests",
 		map[string]string{"cid": e.Cid, "continent": e.Continent, "country": e.Country},
@@ -112,12 +116,13 @@ func (db *DB) writeEntryToInfluxDB(e model.EntryStruct) {
 	}
 }
 
+// WriteProvidersToDB  writes the provider to the database
 func (db *DB) WriteProvidersToDB(t time.Time, n time.Time, ans model.JsonAnswer) {
 	log.Debug("Writing to db providers of cid", ans.Cid)
 	for _, prov := range ans.Providers {
 		for _, locs := range prov.Locations {
 			log.Println("Writing to db provider", prov.PeerId, " loc:", locs.Continent)
-			switch db.db_to_use {
+			switch db.dbToUse {
 			case "postgres":
 				db.writeProviderToPostgres(t, n, ans, prov, locs)
 			case "influx":
@@ -127,6 +132,7 @@ func (db *DB) WriteProvidersToDB(t time.Time, n time.Time, ans model.JsonAnswer)
 	}
 }
 
+// writeProviderToPostgres writes the provider to the postgres database
 func (db *DB) writeProviderToPostgres(t time.Time, n time.Time, ans model.JsonAnswer, prov model.Provider, locs model.Location) {
 	sqlStatement := `
 			INSERT INTO public.providers
@@ -151,6 +157,7 @@ func (db *DB) writeProviderToPostgres(t time.Time, n time.Time, ans model.JsonAn
 	}
 }
 
+// writeProviderToInfluxDB writes the provider to the influxdb database
 func (db *DB) writeProviderToInfluxDB(t time.Time, n time.Time, ans model.JsonAnswer, prov model.Provider, locs model.Location) {
 	p := influxdb2.NewPoint("providers",
 		map[string]string{"cid": ans.Cid, "continent": locs.Continent, "country": locs.Country},

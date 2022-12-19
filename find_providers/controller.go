@@ -37,42 +37,42 @@ var iconf = db.InfluxDBConf{
 
 // kafka params
 const (
-	bootstrap_servers    = "kafka:9092"
-	group_id             = "ipfs-gateway-logs"
-	max_poll_interval_ms = "3600000"
+	bootstrapServers  = "kafka:9092"
+	groupId           = "ipfs-gateway-logs"
+	maxPollIntervalMs = "3600000"
 )
 
 // rabbitmq params
 const (
-	rabbitmq_host = "amqp://guest:guest@broker:5672/"
+	rabbitmqHost = "amqp://guest:guest@broker:5672/"
 )
 
-const broker_to_use = "rabbitmq"
+const brokerToUse = "rabbitmq"
 
 const parserUrl = "http://parser:9000"
 const providersUrl = "http://find_providers:10000"
 
-const db_to_use = "postgres"
+const dbToUse = "postgres"
 
 var dbAPI *db.DB
 
-var found_providers_lock *sync.Mutex
-var found_providers map[string]time.Time
+var providersFoundLock *sync.Mutex
+var providersFound map[string]time.Time
 
-var requests_lock *sync.Mutex
+var requestsLock *sync.Mutex
 var requests = 0
 
 var count = 0
 
 func incRequests() {
-	requests_lock.Lock()
-	defer requests_lock.Unlock()
+	requestsLock.Lock()
+	defer requestsLock.Unlock()
 	requests++
 }
 
 func decRequests() {
-	requests_lock.Lock()
-	defer requests_lock.Unlock()
+	requestsLock.Lock()
+	defer requestsLock.Unlock()
 	requests--
 	count++
 }
@@ -85,13 +85,15 @@ func main() {
 	pflag.Parse()
 	concurrency := *c
 	var batch = *b
-	var waitfor = 50
+	var waitFor = 50
 
-	dbAPI = db.PrepareDB(db_to_use, pconf)
+	// init db
+	dbAPI = db.PrepareDB(dbToUse, pconf)
 
-	requests_lock = new(sync.Mutex)
-	found_providers_lock = new(sync.Mutex)
-	found_providers = make(map[string]time.Time)
+	// init controller state
+	requestsLock = new(sync.Mutex)
+	providersFoundLock = new(sync.Mutex)
+	providersFound = make(map[string]time.Time)
 	cleanup := time.NewTicker(12 * time.Hour)
 	reqsCh := make(chan struct{}, concurrency)
 	provsCh := make(chan struct {
@@ -102,28 +104,35 @@ func main() {
 		err       error
 	})
 
-	logCh := broker.PrepareBroker(broker_to_use, rabbitmq_host, group_id)
+	// init broker
+	logCh := broker.PrepareBroker(brokerToUse, rabbitmqHost, groupId)
+
+	// init fetch providers goroutine
 	go fetchProviders(provsCh, parserUrl)
 
 	requests := 0
 	log.Infoln("Ready to go! concurrency:", concurrency, "batch:", batch)
 	for {
+		// forever
 
+		// wait if there are too many ongoing requests
 		if batch > 0 && count >= batch {
-			requests_lock.Lock()
-			if requests > waitfor {
+			requestsLock.Lock()
+			if requests > waitFor {
 				log.Debug("----------------- waiting ----------------")
 				<-time.After(10 * time.Second)
 			}
 			count = 0
-			requests_lock.Unlock()
+			requestsLock.Unlock()
 
 		}
 
 		log.Debug("-------------------- Requests:", requests)
 		select {
+		// retrieve a log entry from the broker
 		case entry := <-logCh:
 			reqsCh <- struct{}{}
+			//parse the entry
 			e, err := parseEntry(parserUrl, entry)
 			reqId := genReqId(e)
 			if err != nil {
@@ -131,12 +140,15 @@ func main() {
 				<-reqsCh
 			} else {
 				requests++
+				// write entry to db
 				go dbAPI.WriteEntryToDB(e, reqId)
 				if *dontFindProviders {
 					<-reqsCh
 				} else {
+					// providers have not been found yet
 					if !foundProviders(e.Cid) {
 						incRequests()
+						// go and ask to find the providers for the cid
 						go func(url string, cid string, t time.Time) {
 							ans := struct {
 								timeOfReq time.Time
@@ -158,38 +170,43 @@ func main() {
 				}
 			}
 		case <-cleanup.C:
+			// cleanup providersFound map
 			cleanupFoundProviders()
 		}
 	}
 
 }
 
+// cleanupFoundProviders removes from the providersFound map the entries that are older than 12 hours
 func cleanupFoundProviders() {
-	found_providers_lock.Lock()
-	defer found_providers_lock.Unlock()
-	for p, t := range found_providers {
+	providersFoundLock.Lock()
+	defer providersFoundLock.Unlock()
+	for p, t := range providersFound {
 		if time.Now().After(t.Add(24 * time.Hour)) {
-			delete(found_providers, p)
+			delete(providersFound, p)
 		}
 	}
 }
 
+// foundProviders checks if the providers for the given cid have been found
 func foundProviders(cid string) bool {
-	found_providers_lock.Lock()
-	defer found_providers_lock.Unlock()
-	t, ok := found_providers[cid]
+	providersFoundLock.Lock()
+	defer providersFoundLock.Unlock()
+	t, ok := providersFound[cid]
 	if ok && time.Now().After(t.Add(24*time.Hour)) {
 		return false
 	}
 	return ok
 }
 
+// genReqId generates a unique id for the request
 func genReqId(e model.EntryStruct) string {
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%v%v%v%v%v%v%v", e.Time, e.Ip, e.Cid, e.BodyBytes, e.RequestTime, e.RequestLength, e.HttpUserAgent)))
 	return string(h.Sum(nil))
 }
 
+// fetchProviders fetches the providers from the providersUrl and writes them to the db
 func fetchProviders(provsCh chan struct {
 	timeOfReq time.Time
 	timeNow   time.Time
@@ -222,17 +239,19 @@ func fetchProviders(provsCh chan struct {
 
 }
 
+// foundProvider writes or updates the providersFound map for the given cid
 func foundProvider(cid string) bool {
-	found_providers_lock.Lock()
-	defer found_providers_lock.Unlock()
-	t, ok := found_providers[cid]
+	providersFoundLock.Lock()
+	defer providersFoundLock.Unlock()
+	t, ok := providersFound[cid]
 	if !ok || time.Now().After(t.Add(24*time.Hour)) {
-		found_providers[cid] = time.Now()
+		providersFound[cid] = time.Now()
 		return true
 	}
 	return false
 }
 
+// parseEntry parses the log entry with the parserUrl
 func parseEntry(url string, entry string) (model.EntryStruct, error) {
 	resp := service.SendRequest("POST", fmt.Sprintf("%v/parse", url), "text/plain; charset=utf-8", bytes.NewBuffer([]byte(entry)))
 	defer resp.Body.Close()
@@ -241,11 +260,11 @@ func parseEntry(url string, entry string) (model.EntryStruct, error) {
 
 	var e model.EntryStruct
 	if resp.Status != "200 OK" {
-		var err_msg struct {
+		var errMsg struct {
 			Error string `json:"error"`
 		}
-		_ = json.Unmarshal(bodyBytes, &err_msg)
-		return e, errors.New(fmt.Sprintf("%v: %v", resp.Status, err_msg.Error))
+		_ = json.Unmarshal(bodyBytes, &errMsg)
+		return e, errors.New(fmt.Sprintf("%v: %v", resp.Status, errMsg.Error))
 	}
 	err := json.Unmarshal(bodyBytes, &e)
 	if err != nil {
@@ -255,6 +274,7 @@ func parseEntry(url string, entry string) (model.EntryStruct, error) {
 	return e, nil
 }
 
+// findAllProvider asks the providersUrl to find the providers for the given cid
 func findAllProvider(url string, cid string) (model.JsonAnswer, error) {
 	resp := service.SendRequest("GET", fmt.Sprintf("%v/findAllProviders/%v", url, cid), "", nil)
 
@@ -263,11 +283,11 @@ func findAllProvider(url string, cid string) (model.JsonAnswer, error) {
 
 	var ans model.JsonAnswer
 	if resp.Status != "200 OK" {
-		var err_msg struct {
+		var errMsg struct {
 			Error string `json:"error"`
 		}
-		_ = json.Unmarshal(bodyBytes, &err_msg)
-		return ans, errors.New(fmt.Sprintf("%v: %v", resp.Status, err_msg.Error))
+		_ = json.Unmarshal(bodyBytes, &errMsg)
+		return ans, errors.New(fmt.Sprintf("%v: %v", resp.Status, errMsg.Error))
 	}
 	err := json.Unmarshal(bodyBytes, &ans)
 	if err != nil {
@@ -277,6 +297,7 @@ func findAllProvider(url string, cid string) (model.JsonAnswer, error) {
 	return ans, nil
 }
 
+// findProvider asks the providersUrl to find the provider for the given cid
 func findProvider(url string, cid string) (model.JsonAnswer, error) {
 	resp := service.SendRequest("GET", fmt.Sprintf("%v/findProviders/%v", url, cid), "", nil)
 
@@ -285,11 +306,11 @@ func findProvider(url string, cid string) (model.JsonAnswer, error) {
 
 	var ans model.JsonAnswer
 	if resp.Status != "200 OK" {
-		var err_msg struct {
+		var errMsg struct {
 			Error string `json:"error"`
 		}
-		_ = json.Unmarshal(bodyBytes, &err_msg)
-		return ans, errors.New(fmt.Sprintf("%v: %v", resp.Status, err_msg.Error))
+		_ = json.Unmarshal(bodyBytes, &errMsg)
+		return ans, errors.New(fmt.Sprintf("%v: %v", resp.Status, errMsg.Error))
 	}
 	err := json.Unmarshal(bodyBytes, &ans)
 	if err != nil {
@@ -299,6 +320,7 @@ func findProvider(url string, cid string) (model.JsonAnswer, error) {
 	return ans, nil
 }
 
+// parseProviders parses the providers with the parserUrl
 func parseProviders(url string, providers []model.Provider) ([]model.Provider, error) {
 	providersJson, _ := json.Marshal(providers)
 

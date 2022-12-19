@@ -34,9 +34,9 @@ var setniloutput = progressbar.OptionSetWriter(ioutil.Discard)
 func main() {
 	//logging.SetAllLoggers(logging.LevelDebug)
 	file := flag.String("f", "", "File with content to get")
-	resolve_peers := flag.Bool("resPeers", false, "Resolve peers instead of cids")
+	resolvePeers := flag.Bool("resPeers", false, "Resolve peers instead of cids")
 	concurrency = flag.Int("c", 5, "Number of concurrent requests")
-	waitime := flag.Duration("w", time.Minute*0, "Grace period before workload")
+	waitTime := flag.Duration("w", time.Minute*0, "Grace period before workload")
 	logfile := flag.String("out", "", "Output file")
 	timeout = flag.Duration("timeout", time.Minute*0, "Query timeout")
 
@@ -53,6 +53,7 @@ func main() {
 		_ = f.Close()
 	}
 
+	// Create a libp2p Host that listens on a random TCP port
 	h, err := libp2p.New()
 	if err != nil {
 		panic(err)
@@ -60,6 +61,7 @@ func main() {
 
 	log.Println("My ID: ", h.ID().Pretty())
 
+	// connect to the bootstrap nodes
 	for _, pi := range dht.GetDefaultBootstrapPeerAddrInfos() {
 		log.Println("Connecting to", pi.ID)
 		if err := h.Connect(context.Background(), pi); err != nil {
@@ -69,11 +71,13 @@ func main() {
 		}
 	}
 
+	// Create a DHT, using a random peer ID.
 	kad, err := dht.New(context.Background(), h, dht.Mode(dht.ModeClient))
 	if err != nil {
 		panic(err)
 	}
 
+	// Bootstrap the DHT. In the default configuration, this spawns a Background
 	err = kad.Bootstrap(context.Background())
 	if err != nil {
 		panic(err)
@@ -91,29 +95,32 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT)
 
 	select {
-	case <-time.After(*waitime):
+	case <-time.After(*waitTime):
 		start := time.Now()
 		log.Println("Beginning workload")
-		startWorkload(kad, *file, *resolve_peers)
+		startWorkload(kad, *file, *resolvePeers)
 		log.Println("Finished workload", "time", time.Now().Sub(start))
 	case <-stop:
 		os.Exit(0)
 	}
 }
 
-func startWorkload(kad *dht.IpfsDHT, file string, resolve_peers bool) {
+// startWorkload starts the workload
+func startWorkload(kad *dht.IpfsDHT, file string, resolvePeers bool) {
+	// read the CIDs from the file
 	if f, err := os.Open(file); err != nil {
 		panic(err)
 	} else {
 		defer func(f *os.File) {
 			_ = f.Close()
 		}(f)
-		getKeys(kad, f, *concurrency, resolve_peers)
+		getKeys(kad, f, *concurrency, resolvePeers)
 
 	}
 }
 
-func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int, resolve_peers bool) {
+// getKeys gets the keys from the file
+func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int, resolvePeers bool) {
 	global := 0
 	tokens := make(chan struct{}, concurrent)
 	answers := make(chan answer)
@@ -146,7 +153,7 @@ func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int, resolve_peers bool) {
 			global--
 		}
 		//continue
-		if resolve_peers {
+		if resolvePeers {
 			searchPeer(kad, cidStr, &global, tokens, answers)
 		} else {
 			searchCid(kad, cidStr, &global, tokens, answers)
@@ -162,6 +169,7 @@ func getKeys(kad *dht.IpfsDHT, f *os.File, concurrent int, resolve_peers bool) {
 	_ = bar.Close()
 }
 
+// searchPeer searches for the peer on the DHT
 func searchPeer(kad *dht.IpfsDHT, str string, global *int, tokens chan struct{}, answers chan answer) {
 	strsplit := strings.Split(str, " ")
 	if cid, err := cid2.Decode(strsplit[0]); err != nil {
@@ -210,6 +218,7 @@ func searchPeer(kad *dht.IpfsDHT, str string, global *int, tokens chan struct{},
 	}
 }
 
+// searchCid searches for the peer on the DHT
 func searchCid(kad *dht.IpfsDHT, cidStr string, global *int, tokens chan struct{}, answers chan answer) {
 	if cid, err := cid2.Decode(cidStr); err != nil {
 		log.Println("Error: ", err, " on decoding ", cidStr)
@@ -244,6 +253,7 @@ func searchCid(kad *dht.IpfsDHT, cidStr string, global *int, tokens chan struct{
 	}
 }
 
+// loadFile loads the file and returns the cids
 func loadFile(reader *bufio.Reader, lines int) []string {
 	//fmt.Fprintf(os.Stderr, "Loading File")
 	cids := make([]string, lines)
@@ -263,6 +273,7 @@ func loadFile(reader *bufio.Reader, lines int) []string {
 	return cids
 }
 
+// answer is the struct that contains the answer of the search
 type answer struct {
 	p   []model.ProviderInfo
 	cid cid2.Cid
@@ -270,6 +281,7 @@ type answer struct {
 	err error
 }
 
+// logAnswer logs the answer
 func logAnswer(a answer) {
 	if a.err != nil {
 		log.Println("Failed: ", a.cid, "err: ", a.err, " in peers: ", a.p, " time: ", a.dur)
@@ -278,6 +290,7 @@ func logAnswer(a answer) {
 	}
 }
 
+// lineCounter counts the lines of a file
 func lineCounter(r io.Reader) (int, error) {
 	buf := make([]byte, 32*1024)
 	count := 0

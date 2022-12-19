@@ -1,5 +1,7 @@
 package broker
 
+// This is left commented because we were unable to containerize the Kafka client library
+
 //func prepareKafka() *kafka.Consumer {
 //	consumer, err := kafka.NewConsumer(&kafka.ConfigMap{
 //		"bootstrap.servers":    bootstrap_servers,

@@ -44,6 +44,7 @@ func main() {
 
 }
 
+// parseFindProvidersEntry parses a log entry from the find_providers service
 func parseFindProvidersEntry(url string, entry string) (model.JsonAnswer, error) {
 	resp := service.SendRequest("POST", fmt.Sprintf("%v/parse/findProvidersLog", url), "text/plain; charset=utf-8", bytes.NewBuffer([]byte(entry)))
 	defer resp.Body.Close()

@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 )
 
+// checkIfValidString checks if a string is valid utf8
 func checkIfValidString(s string) sql.NullString {
 	if len(s) == 0 {
 		return sql.NullString{}
@@ -21,6 +22,7 @@ func checkIfValidString(s string) sql.NullString {
 	}
 }
 
+// checkIfValidInt checks if a string has size 0 to return a valid null int
 func checkIfValidInt(s string) sql.NullInt32 {
 	if len(s) == 0 {
 		return sql.NullInt32{}
@@ -36,6 +38,7 @@ func checkIfValidInt(s string) sql.NullInt32 {
 	}
 }
 
+// checkIfValidFloat checks if a string has size 0 to return a valid null float
 func checkIfValidFloat(s string) sql.NullFloat64 {
 	if len(s) == 0 {
 		return sql.NullFloat64{}
