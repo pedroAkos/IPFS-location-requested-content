@@ -17,7 +17,8 @@ Create TABLE requests (
                           body_bytes bigint,
                           user_agent text,
                           cache text,
-                          status int
+                          status int,
+                          host text
 );
 
 

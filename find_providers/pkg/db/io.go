@@ -87,13 +87,13 @@ func (db *DB) writeEntryToPostgres(e model.EntryStruct, reqId string) {
 	sqlStatement := `INSERT INTO public.requests 
 			(req_id, timestamp, cid, continent, country, region, lat, long, asn, aso,
 			request_time, upstream_time,
-			body_bytes, user_agent, cache, status)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+			body_bytes, user_agent, cache, status, host)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 			ON CONFLICT ON CONSTRAINT requests_pkey DO
 			NOTHING 
 			`
 	_, err := db.db.Exec(sqlStatement, reqId, e.Time, e.Cid, checkIfValidString(e.Continent), checkIfValidString(e.Country), checkIfValidString(e.Region), checkIfValidFloat(e.Lat), checkIfValidFloat(e.Long), checkIfValidInt(e.ASN), checkIfValidString(e.ASO),
-		checkIfValidFloat(e.RequestTime), checkIfValidFloat(e.UpstreamResponseTime[0]), checkIfValidFloat(e.BodyBytes), checkIfValidString(e.HttpUserAgent), checkIfValidString(e.Cache), checkIfValidInt(e.Status))
+		checkIfValidFloat(e.RequestTime), checkIfValidFloat(e.UpstreamResponseTime[0]), checkIfValidFloat(e.BodyBytes), checkIfValidString(e.HttpUserAgent), checkIfValidString(e.Cache), checkIfValidInt(e.Status), checkIfValidString(e.HttpHost))
 	if err != nil {
 		log.Println(err, "on", e)
 	}
