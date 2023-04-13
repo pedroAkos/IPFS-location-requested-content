@@ -1,0 +1,16 @@
+
+Table = 'providers p'
+
+cid = 'p.cid'
+country = 'p.country'
+continent = 'p.continent'
+region = 'p.region'
+lat = 'p.lat'
+long = 'p.long'
+asn = 'p.asn'
+aso = 'p.aso'
+request_time = 'p.request_time'
+#peerID = 'REPLACE(p.peerID, \'{\', \'\')'
+peerID = 'p.peerID'
+found_at = 'p.found_at'
+updated_at = 'p.updated_at'

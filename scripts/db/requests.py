@@ -1,0 +1,18 @@
+
+Table = 'requests r'
+
+req_id = 'r.req_id'
+timestamp = 'r.timestamp'
+cid = 'r.cid'
+country = 'r.country'
+continent = 'r.continent'
+region = 'r.region'
+lat = 'r.lat'
+long = 'r.long'
+asn = 'r.asn'
+aso = 'r.aso'
+request_time = 'r.request_time'
+upstream_time = 'r.upstream_time'
+body_bytes = 'r.body_bytes'
+user_agent = 'r.user_agent'
+cache = 'r.cache'

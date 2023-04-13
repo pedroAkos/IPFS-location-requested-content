@@ -6,7 +6,7 @@ FROM base as builder
 WORKDIR /install
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y curl make automake gcc g++ subversion python3-dev && rm -rf /var/lib/apt/lists/*
-COPY scripts/requirements.txt requirements.txt
+COPY scripts/service_requirements.txt requirements.txt
 RUN pip3 install --prefix=/install -r requirements.txt
 
 ARG MAXMIND_LICENCE_KEY

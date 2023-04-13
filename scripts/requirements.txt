@@ -1,6 +1,7 @@
 pandas
-flask
-python-dateutil
-geoip2
-python-geoip-geolite2
-python-geoip-python3
+numpy
+seaborn
+matplotlib
+sqlalchemy
+tqdm
+pika
