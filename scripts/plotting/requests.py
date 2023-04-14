@@ -66,7 +66,14 @@ def plot_requests_over_time(time_unit, file=None, save=None, out=None):
             df.to_csv(save)
     print(df)
     ax = df.plot(legend=False, figsize=(12, 4), x_compat=True)
-    ax.xaxis.set_major_locator(mdates.DayLocator())
+    if time_unit == 'hour':
+        ax.xaxis.set_major_locator(mdates.DayLocator())
+    elif time_unit == 'minute':
+        ax.xaxis.set_major_locator(mdates.HourLocator())
+    elif time_unit == 'second':
+        ax.xaxis.set_major_locator(mdates.MinuteLocator())
+    else:
+        raise ValueError(f'Invalid time unit: {time_unit}')
     plt.xlabel('Time')
     plt.ylabel(f'Requests per {time_unit}')
     plt.tight_layout()

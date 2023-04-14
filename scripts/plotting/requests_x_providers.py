@@ -30,7 +30,7 @@ def plot_locality_heatmap(file=None, save=None, out=None):
     provs = set(df['provider'].tolist())
     all = sorted(reqs.union(provs))
     df.set_index(['requester', 'provider'], inplace=True)
-    mat = np.zeros((len(all), len(all)), dtype=np.float)
+    mat = np.zeros((len(all), len(all)), dtype=float)
 
     reqs = df.groupby('requester')
     i = 0

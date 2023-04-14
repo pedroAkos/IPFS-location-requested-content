@@ -3,7 +3,8 @@ WORKDIR code
 ENV CGO_ENABLED=0
 ENV DEBIAN_FRONTEND=noninteractive
 COPY find_providers .
-RUN go mod download
+RUN rm go.sum
+RUN go mod download && go mod tidy
 RUN go build -o /out/writer write_find_provider_logs_to_db.go
 
 FROM debian:buster-slim as app

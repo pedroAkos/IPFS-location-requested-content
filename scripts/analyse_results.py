@@ -1,14 +1,27 @@
 import os
+import argparse
 
-from plotting import requests, providers, requests_x_providers
-import db.io as db
+from scripts.plotting import requests, providers, requests_x_providers
+import scripts.db.io as db
 
-db.open_db('localhost', 5433)
-os.makedirs('data', exist_ok=True)
+parser = argparse.ArgumentParser(description='Analyse results.')
+parser.add_argument('--db-host', type=str, default='localhost', help='Database host')
+parser.add_argument('--db-port', type=int, default=5433, help='Database port')
+parser.add_argument('--data-dir', type=str, default='data', help='Data directory')
+parser.add_argument('--res-dir', type=str, default='res', help='Results directory')
+parser.add_argument('--time-unit', type=str, default='hour', help='Time unit')
+args = parser.parse_args()
 
-requests.plot_requests_over_time('hour', 'data/requests_by_hour.csv', 'data/requests_by_hour.csv', 'res/requests_by_hour.png')
-requests.plot_requests_over_time_by_continent('hour', 'data/requests_by_hour_by_continent.csv', 'data/requests_by_hour_by_continent.csv' , 'res/requests_by_hour_by_continent.png')
-requests.plot_requests_over_time_by_continent('hour', 'data/requests_by_hour_by_continent.csv', 'data/requests_by_hour_by_continent.csv' , 'res/requests_day_by_hour_by_continent.png', days=3, start='7')
+
+db.open_db(args.db_host, args.db_port)
+os.makedirs(args.data_dir, exist_ok=True)
+os.makedirs(args.res_dir, exist_ok=True)
+
+requests.plot_requests_over_time(args.time_unit, f'data/requests_by_{args.time_unit}.csv', f'data/requests_by_{args.time_unit}.csv', f'res/requests_by_{args.time_unit}.png')
+requests.plot_requests_over_time_by_continent(args.time_unit, f'data/requests_{args.time_unit}_by_continent.csv', f'data/requests_{args.time_unit}_by_continent.csv' , f'res/requests_{args.time_unit}_by_continent.png')
+if args.time_unit == 'hour':
+    requests.plot_requests_over_time_by_continent('hour', 'data/requests_by_hour_by_continent.csv', 'data/requests_by_hour_by_continent.csv' , 'res/requests_day_by_hour_by_continent.png', days=3, start='7')
+
 
 requests.plot_cid_popularity('data/requests_cid_popularity.csv', 'data/requests_cid_popularity.csv', 'res/requests_cid_popularity.png')
 requests.plot_cid_popularity_by_continent('data/requests_cid_popularity_by_continent.csv', 'data/requests_cid_popularity_by_continent.csv', 'res/requests_cid_popularity_by_continent.png',)

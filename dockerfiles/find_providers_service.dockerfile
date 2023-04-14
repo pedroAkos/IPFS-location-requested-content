@@ -2,7 +2,8 @@ FROM golang:1.18.1-buster AS build
 WORKDIR code
 ENV CGO_ENABLED=0
 COPY find_providers .
-RUN go mod download
+RUN rm go.sum
+RUN go mod download && go mod tidy
 RUN go build -o /out/find_providers find_providers_service.go
 
 FROM debian:buster-slim as app

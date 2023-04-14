@@ -3,19 +3,19 @@ version: "3.9"
 services:
   parser:
     deploy:
-      replicas: 10
+      replicas: 1
     image: pedro_akos/ipfs-gateway-logs-parser:0.1a-patched
     build:
       context: .
       dockerfile: dockerfiles/parser_service.dockerfile
-    volumes:
-      - /home/op/IPFS-location-requested-content/scripts/maxmind:/app/maxmind
+      args:
+        - MAXMIND_LICENCE_KEY=${MAXMIND_LICENCE_KEY}
 
   find_providers:
     image: pedro_akos/ipfs-find-providers:0.1
     deploy:
       mode: replicated
-      replicas: 5
+      replicas: 1
     build:
       context: .
       dockerfile: dockerfiles/find_providers_service.dockerfile
@@ -76,7 +76,7 @@ services:
       - db
     restart: unless-stopped
     deploy:
-      replicas: 5
+      replicas: 1
 
   controller:
     image: pedro_akos/ipfs-content-location-controller:0.1
@@ -100,7 +100,7 @@ services:
       - db
     restart: unless-stopped
     deploy:
-      replicas: 5
+      replicas: 1
 
 
 volumes:

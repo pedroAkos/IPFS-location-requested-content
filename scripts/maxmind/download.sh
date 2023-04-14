@@ -1,5 +1,10 @@
 YOUR_LICENSE_KEY=$1
 
+if [ -z $YOUR_LICENSE_KEY ]; then
+    echo "LICENSE_KEY is required."
+    exit 1
+fi
+
 curl -o geolite2-asn.tar.gz https://download.maxmind.com/app/geoip_download\?edition_id=GeoLite2-ASN\&license_key=${YOUR_LICENSE_KEY}\&suffix=tar.gz
 curl -o geolite2-city.tar.gz https://download.maxmind.com/app/geoip_download\?edition_id=GeoLite2-City\&license_key=${YOUR_LICENSE_KEY}\&suffix=tar.gz
 #curl -o geolite2-country.tar.gz https://download.maxmind.com/app/geoip_download\?edition_id=GeoLite2-Country\&license_key=${YOUR_LICENSE_KEY}\&suffix=tar.gz

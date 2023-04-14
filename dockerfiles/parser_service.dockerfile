@@ -13,7 +13,7 @@ ARG MAXMIND_LICENCE_KEY
 RUN mkdir maxmind
 COPY scripts/maxmind/download.sh maxmind/download.sh
 WORKDIR maxmind
-RUN chmod +x download.sh && ./download.sh ${MAXMIND_LICENCE_KEY}
+RUN chmod +x download.sh && ./download.sh $MAXMIND_LICENCE_KEY
 
 FROM base
 ENV FLASK_APP=parser_service.py

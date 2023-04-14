@@ -17,6 +17,7 @@ require (
 
 require (
 	github.com/confluentinc/confluent-kafka-go v1.9.2
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/pflag v1.0.3
 )
 

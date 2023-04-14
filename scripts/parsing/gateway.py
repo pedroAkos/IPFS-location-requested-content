@@ -90,6 +90,7 @@ def extract_date(time: str) -> datetime:
     datetime
         date
 
+
     """
     time = time.strip('][')
     return dateutil.parser.parse(time)
@@ -97,6 +98,10 @@ def extract_date(time: str) -> datetime:
 
 def parse_log_entry(log_entry: str) -> dict[str, str]:
     """ Parses log entry
+
+    Expected format:
+    199.83.232.50 - - [2022-03-21T00:00:58+00:00] "GET /ipfs/QmPvt7yHLGpVhd4jVFX6reEZZ34fQRepQ1a1QTsZQBH1hJ/KittyCat3621.png HTTP/1.1" 200 50470 120 12.823 12.820 12.820 MISS "-" "-" *.i.ipfs.io ipfs.io https
+    <ip> <x> <y> <time> <request> <status> <body_bytes> <req_lenght> <request_time> <upstream_response_time> <upstream_header_time> <upstream_cache_status> <http_refer> <http_user_agent> <server_name> <http_host> <scheme>
 
     Parameters
     ----------
@@ -107,6 +112,8 @@ def parse_log_entry(log_entry: str) -> dict[str, str]:
     -------
     dict[str, str]
         parsed log entry
+
+
 
     """
     matches = re.findall('\"(.*?)\"', log_entry)  # finds all matches
