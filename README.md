@@ -24,26 +24,21 @@ For the daemon version, we provide a docker-compose file that contains the follo
 
 First build all the services through the following command:
 ``` 
-docker-compose build
-```
-
-The parser service requires a Maxmind Licence Key, which you can get [here](https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en). 
-You need build the parser service with the license key as such:
-
-```
-docker-compose build --build-arg MAXMIND_LICENSE_KEY=<your license key> parser
+        export MAXMIND_LICENCE_KEY=<your licence key>
+        docker-compose build        
 ```
 
 Then you can run the services through the following command:
 ```
-docker stack deploy -c docker-compose.yml ipfs-loc
+        docker swarm init
+        docker stack deploy -c docker-compose.yaml ipfs-loc
 ```
 
 
 ## How to run the scripts:
 
 We provide sample data in ``scripts/data/sample`` folder.
-This data is a 80M cut from IPFS gateways from April 2022.
+This data is a 80M cut from IPFS gateways from March 2022.
 In this folder the data is already processed, but you can run yourself as well.
 
 ```
