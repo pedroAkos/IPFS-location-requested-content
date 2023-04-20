@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/517649261.svg)](https://zenodo.org/badge/latestdoi/517649261)
 # Location of IPFS end-users and requested content
 
 This project contains a measurement architecture to analyse the locality of interest of requested content in the IPFS network.
