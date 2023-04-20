@@ -1,7 +1,7 @@
-YOUR_LICENSE_KEY=$1
+YOUR_LICENCE_KEY=$1
 
-if [ -z $YOUR_LICENSE_KEY ]; then
-    echo "LICENSE_KEY is required."
+if [ -z $YOUR_LICENCE_KEY ]; then
+    echo "LICENCE_KEY is required."
     exit 1
 fi
 
