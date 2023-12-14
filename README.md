@@ -24,7 +24,7 @@ For the daemon version, we provide a docker-compose file that contains the follo
 
 First build all the services through the following command:
 ``` 
-        export MAXMIND_LICENCE_KEY=<your licence key>
+        export MAXMIND_LICENSE_KEY=<your license key>
         docker-compose build        
 ```
 

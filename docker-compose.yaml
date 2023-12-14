@@ -9,7 +9,7 @@ services:
       context: .
       dockerfile: dockerfiles/parser_service.dockerfile
       args:
-        - MAXMIND_LICENCE_KEY=${MAXMIND_LICENCE_KEY}
+        - MAXMIND_LICENSE_KEY=${MAXMIND_LICENSE_KEY}
 
   find_providers:
     image: pedro_akos/ipfs-find-providers:0.1
