@@ -8,6 +8,8 @@ Here locality of interest means that content that is requested in a given region
 
 You can find more about this project in this [Notion](https://www.notion.so/pl-strflt/Location-of-IPFS-end-users-and-requested-content-7668e98a725d4eea9f36fcafaabe7120) page.
 
+You can find a detailed report using this software [here](https://github.com/plprobelab/network-measurements/blob/master/results/rfm3-location-ipfs-users-and-requested-conten.md).
+
 The project contains two modes of operating:
 - As a daemon that consumes the logs of an IPFS gateway and produces a measurement of the locality of interest of the requested content.
 - As scripts that process the logs of an IPFS gateway and produce a measurement of the locality of interest of the requested content.
