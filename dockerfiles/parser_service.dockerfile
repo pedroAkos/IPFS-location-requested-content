@@ -9,7 +9,7 @@ RUN apt update && apt install -y curl make automake gcc g++ subversion python3-d
 COPY scripts/service_requirements.txt requirements.txt
 RUN pip3 install --prefix=/install -r requirements.txt
 
-ARG MAXMIND_LICENCE_KEY
+ARG MAXMIND_LICENSE_KEY
 RUN mkdir maxmind
 COPY scripts/maxmind/download.sh maxmind/download.sh
 WORKDIR maxmind

@@ -13,6 +13,16 @@ func FindAllOf(cid cid2.Cid, kad *dht.IpfsDHT) []model.ProviderInfo {
 	providers := make([]model.ProviderInfo, 0)
 	start := time.Now()
 	for p := range kad.FindProvidersAsync(context.Background(), cid, 0) {
+		if len(p.Addrs) == 0 {
+			peer, err := kad.FindPeer(context.Background(), p.ID)
+			if err != nil {
+				continue
+			}
+			if len(peer.Addrs) == 0 {
+				continue
+			}
+			p.Addrs = peer.Addrs
+		}
 		providers = append(providers, model.ProviderInfo{
 			Provider: p,
 			Dur:      time.Now().Sub(start),
