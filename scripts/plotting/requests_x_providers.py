@@ -22,6 +22,9 @@ def plot_locality_heatmap(file=None, save=None, out=None):
             f'group by 1,2')
         if save:
             df.to_csv(save)
+        df = df.replace('', 'Unknown')
+        df = df.replace('RL', 'Unknown')
+
 
     df.fillna('Unknown', inplace=True)
     print(df)

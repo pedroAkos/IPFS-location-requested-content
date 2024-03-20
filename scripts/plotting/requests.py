@@ -19,7 +19,7 @@ def get_request_over_time(time_unit):
     df = db.io.execute_query(
         f'select date_trunc(\'{time_unit}\', {requests.timestamp}) as "Time", count({requests.req_id}) as "Requests per {time_unit}"'
         f'from {requests.Table} '
-        f'group by 1')
+        f'group by 1 order by 1')
     return df
 
 
@@ -91,7 +91,7 @@ def get_requests_over_time_by_continent(time_unit):
     df = db.io.execute_query(
         f'select date_trunc(\'{time_unit}\', {requests.timestamp}) as "Time", {requests.continent}, count({requests.req_id}) as requests '
         f'from {requests.Table} '
-        f'group by 1,2')
+        f'group by 1,2 order by 1')
     df.set_index(["Time"], inplace=True)
     # times = [str(t) for t in df.index.tolist()]
     times = df.index.tolist()
